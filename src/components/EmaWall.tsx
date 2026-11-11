@@ -11,7 +11,8 @@ import {
   ShideStreamer,
   CharterScrollIcon,
   ToriiIcon,
-  SacredSparkleIcon
+  SacredSparkleIcon,
+  ContactEnvelopeIcon
 } from './CustomIcons';
 
 interface EmaWallProps {
@@ -29,6 +30,7 @@ interface EmaWallProps {
   onSelectPlaque: (plaque: EmaPlaque) => void;
   onOpenHangModal: (prefillName?: string) => void;
   onOpenTermsModal: () => void;
+  onOpenContactModal?: () => void;
   onTriggerBreeze?: () => void;
   searchInputRef?: React.RefObject<HTMLInputElement>;
   windSwinging: boolean;
@@ -79,6 +81,7 @@ export const EmaWall: React.FC<EmaWallProps> = ({
   onSelectPlaque,
   onOpenHangModal,
   onOpenTermsModal,
+  onOpenContactModal,
   searchInputRef,
   windSwinging,
   searchQuery,
@@ -641,6 +644,23 @@ export const EmaWall: React.FC<EmaWallProps> = ({
               <CharterScrollIcon size={13} />
               <span>{t.footer.termsLink}</span>
             </button>
+
+            {onOpenContactModal && (
+              <>
+                <span className="text-zinc-700">•</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    shrineAudio.playWoodClack();
+                    onOpenContactModal();
+                  }}
+                  className="hover:text-amber-300 transition-colors inline-flex items-center gap-1 underline underline-offset-4"
+                >
+                  <ContactEnvelopeIcon size={13} color="#f59e0b" />
+                  <span>{t.footer.contactLink}</span>
+                </button>
+              </>
+            )}
           </div>
         </div>
       </footer>

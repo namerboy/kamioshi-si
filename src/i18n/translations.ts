@@ -15,6 +15,8 @@ export interface Translations {
     themeMidnightBtn: string;
     termsBtn: string;
     termsTitle: string;
+    contactBtn: string;
+    contactTitle: string;
     hangBtn: string;
     mobileDockWall: string;
     mobileDockSearch: string;
@@ -164,6 +166,35 @@ export interface Translations {
     brandTag: string;
     hangLink: string;
     termsLink: string;
+    contactLink: string;
+  };
+  contactModal: {
+    title: string;
+    subtitle: string;
+    closeAria: string;
+    nameLabel: string;
+    namePlaceholder: string;
+    emailLabel: string;
+    emailPlaceholder: string;
+    emailHelp: string;
+    topicLabel: string;
+    topicOptions: {
+      general: string;
+      removal: string;
+      feature: string;
+      bug: string;
+      partnership: string;
+    };
+    messageLabel: string;
+    messagePlaceholder: string;
+    privacyNote: string;
+    submitBtn: string;
+    submittingBtn: string;
+    cancelBtn: string;
+    successTitle: string;
+    successDesc: string;
+    closeBtn: string;
+    sendAnotherBtn: string;
   };
 }
 
@@ -183,6 +214,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       themeMidnightBtn: 'Midnight',
       termsBtn: 'Terms',
       termsTitle: 'Terms of Use & Guidelines',
+      contactBtn: 'Contact',
+      contactTitle: 'Contact the Shrinekeeper',
       hangBtn: 'Hang a Plaque',
       mobileDockWall: 'Wall',
       mobileDockSearch: 'Search',
@@ -357,7 +390,36 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     footer: {
       brandTag: 'kamioshi.si — Inspired by Japanese shrine prayer boards (絵馬). Free to use.',
       hangLink: 'Hang a Plaque',
-      termsLink: 'Terms & Guidelines'
+      termsLink: 'Terms & Guidelines',
+      contactLink: 'Contact'
+    },
+    contactModal: {
+      title: 'Contact the Shrinekeeper',
+      subtitle: 'Questions, moderation requests, or suggestions • Replies sent to your email',
+      closeAria: 'Close contact modal',
+      nameLabel: 'Your Name / Pilgrim Handle',
+      namePlaceholder: 'e.g. Aoi, Fan, Anonymous',
+      emailLabel: 'Your Email Address',
+      emailPlaceholder: 'you@example.com',
+      emailHelp: 'We will only use this to reply to your message.',
+      topicLabel: 'Topic / Reason for Contact',
+      topicOptions: {
+        general: 'General Question or Feedback',
+        removal: 'Plaque Removal or Moderation Request',
+        feature: 'Feature Suggestion or Idea',
+        bug: 'Technical Bug Report',
+        partnership: 'Collaboration / Inquiries'
+      },
+      messageLabel: 'Message',
+      messagePlaceholder: 'Write your message here... (If requesting plaque removal, include the #number or name)',
+      privacyNote: 'Delivered securely via FormSubmit. No tracking, accounts, or marketing emails.',
+      submitBtn: 'Send Message',
+      submittingBtn: 'Delivering...',
+      cancelBtn: 'Cancel',
+      successTitle: 'Message Delivered',
+      successDesc: 'Thank you for reaching out. Your message has been sent to the shrinekeeper.',
+      closeBtn: 'Close',
+      sendAnotherBtn: 'Send Another Message'
     }
   },
   ja: {
@@ -375,6 +437,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       themeMidnightBtn: '幽玄',
       termsBtn: '利用規約',
       termsTitle: '利用規約・ガイドライン',
+      contactBtn: '社務所',
+      contactTitle: '社務所（お問い合わせ）',
       hangBtn: '絵馬を掛ける',
       mobileDockWall: '絵馬壁',
       mobileDockSearch: '検索',
@@ -549,7 +613,36 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     footer: {
       brandTag: 'kamioshi.si — 神社仏閣の絵馬（えま）文化に想を得た奉納壁。完全無料。',
       hangLink: '絵馬を掛ける',
-      termsLink: '利用規約'
+      termsLink: '利用規約',
+      contactLink: '社務所・お問い合わせ'
+    },
+    contactModal: {
+      title: '社務所（お問い合わせ）',
+      subtitle: 'ご質問・絵馬の削除申請・ご要望など • メールにてご返信いたします',
+      closeAria: 'お問い合わせ画面を閉じる',
+      nameLabel: 'お名前・巡礼者名',
+      namePlaceholder: '例: 名無しのファン、葵',
+      emailLabel: '返信先メールアドレス',
+      emailPlaceholder: 'you@example.com',
+      emailHelp: '返信以外の目的で使用することはありません。',
+      topicLabel: 'お問い合わせ項目',
+      topicOptions: {
+        general: '一般的なご質問・ご感想',
+        removal: '絵馬の削除・通報・対応依頼',
+        feature: '機能改善・新機能のご提案',
+        bug: '不具合・表示崩れの報告',
+        partnership: 'コラボレーション・その他'
+      },
+      messageLabel: 'お問い合わせ内容',
+      messagePlaceholder: 'メッセージをご記入ください（絵馬の削除申請の場合は #番号 や推し名をご記入ください）',
+      privacyNote: 'FormSubmit経由で安全に社務所へ送信されます。広告やメルマガ配信等には一切使用されません。',
+      submitBtn: 'メッセージを送信する',
+      submittingBtn: '送信中...',
+      cancelBtn: 'キャンセル',
+      successTitle: '送信完了',
+      successDesc: 'メッセージが社務所へ届けられました。返信まで今しばらくお待ちください。',
+      closeBtn: '閉じる',
+      sendAnotherBtn: '別のメッセージを送る'
     }
   }
 };

@@ -7,6 +7,7 @@ import { EmaWall } from './components/EmaWall';
 import { HangEmaModal } from './components/HangEmaModal';
 import { SouvenirModal } from './components/SouvenirModal';
 import { TermsModal } from './components/TermsModal';
+import { ContactModal } from './components/ContactModal';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { ThemeProvider } from './theme/ThemeContext';
 import {
@@ -46,6 +47,7 @@ export const App: React.FC = () => {
   const [selectedPlaque, setSelectedPlaque] = useState<EmaPlaque | null>(null);
   const [isHangModalOpen, setIsHangModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
   const [initialOshiName, setInitialOshiName] = useState<string>('');
 
   // Shared filter & sort state
@@ -317,6 +319,7 @@ export const App: React.FC = () => {
           <Header
             onOpenHangModal={() => openHangModal('')}
             onOpenTermsModal={() => setIsTermsModalOpen(true)}
+            onOpenContactModal={() => setIsContactModalOpen(true)}
             onResetHome={handleResetHome}
             onFocusSearch={handleFocusSearch}
             totalVows={stats.totalPlaques}
@@ -346,6 +349,7 @@ export const App: React.FC = () => {
               onSelectPlaque={(plaque) => setSelectedPlaque(plaque)}
               onOpenHangModal={(prefill) => openHangModal(prefill || '')}
               onOpenTermsModal={() => setIsTermsModalOpen(true)}
+              onOpenContactModal={() => setIsContactModalOpen(true)}
             />
           </main>
 
@@ -377,6 +381,12 @@ export const App: React.FC = () => {
             hiddenCount={hiddenCount}
             onRestoreHidden={handleRestoreHidden}
             onClearPlaques={handleClearPlaques}
+          />
+
+          {/* 6. Contact & Shrine Inquiry Modal (FormSubmit Masked Endpoint) */}
+          <ContactModal
+            isOpen={isContactModalOpen}
+            onClose={() => setIsContactModalOpen(false)}
           />
         </div>
       </LanguageProvider>

@@ -12,12 +12,14 @@ import {
   SacredSparkleIcon,
   SakuraSunIcon,
   MidnightMoonIcon,
-  BrushSearchIcon
+  BrushSearchIcon,
+  ContactEnvelopeIcon
 } from './CustomIcons';
 
 interface HeaderProps {
   onOpenHangModal: () => void;
   onOpenTermsModal: () => void;
+  onOpenContactModal?: () => void;
   onResetHome: () => void;
   onFocusSearch?: () => void;
   totalVows: number;
@@ -26,6 +28,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   onOpenHangModal,
   onOpenTermsModal,
+  onOpenContactModal,
   onResetHome,
   onFocusSearch,
   totalVows
@@ -148,6 +151,22 @@ export const Header: React.FC<HeaderProps> = ({
               <CharterScrollIcon size={14} />
               <span className="hidden md:inline">{t.header.termsBtn}</span>
             </button>
+
+            {/* Contact / Shrine Inquiries */}
+            {onOpenContactModal && (
+              <button
+                type="button"
+                onClick={() => {
+                  shrineAudio.playWoodClack();
+                  onOpenContactModal();
+                }}
+                className="hidden sm:inline-flex items-center gap-1.5 min-h-[36px] px-2.5 py-1.5 rounded-xl text-xs font-mono text-zinc-400 hover:text-amber-200 hover:bg-zinc-900/70 border border-transparent hover:border-zinc-800 transition-colors"
+                title={t.header.contactTitle}
+              >
+                <ContactEnvelopeIcon size={14} color="#f59e0b" />
+                <span className="hidden lg:inline">{t.header.contactBtn}</span>
+              </button>
+            )}
 
             {/* Primary CTA: Hang a Plaque */}
             <button

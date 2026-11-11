@@ -19,7 +19,7 @@ export const onRequestPost = async (ctx: PagesContext): Promise<Response> => {
     }
 
     // 2. Validate and sanitize user inputs
-    const name = sanitizeText(body.name, 50) || 'Anonymous Pilgrim';
+    const name = sanitizeText(body.name, 50) || 'Anonymous Fan';
     const email = String(body.email || '').trim().slice(0, 100);
     const subject = sanitizeText(body.subject, 80) || 'General Inquiry';
     const message = sanitizeText(body.message, 1500);

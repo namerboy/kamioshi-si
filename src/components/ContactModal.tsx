@@ -311,7 +311,7 @@ export const ContactModal: React.FC<ContactModalProps> = ({
               </div>
             )}
 
-            {/* Name / Handle (Optional) */}
+            {/* Name / Nickname (Optional) */}
             <div className="space-y-1">
               <label htmlFor="contact-name" className="block text-xs font-mono text-zinc-300">
                 {t.contactModal.nameLabel}

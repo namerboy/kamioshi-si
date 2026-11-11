@@ -1,0 +1,503 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --scrollbar-thumb: #4a3525;
+    --scrollbar-track: #0e0b09;
+    --in-oklab: ;
+    --in-oklch: ;
+  }
+
+  @supports (background: linear-gradient(in oklab, white, black)) {
+    :root {
+      --in-oklab: in oklab;
+      --in-oklch: in oklch;
+    }
+  }
+
+  body {
+    background-color: #0b0908;
+    color: #f5f0e6;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    overflow-x: clip;
+    min-block-size: 100dvh;
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: 'Cinzel', 'Noto Serif JP', 'Hiragino Mincho ProN', Georgia, serif;
+    text-wrap: balance;
+  }
+
+  p, blockquote, li {
+    text-wrap: pretty;
+  }
+
+  canvas, img, svg {
+    display: block;
+  }
+}
+
+/* Native <dialog> Top-Layer Scroll Containment & Entry/Exit Animations */
+dialog {
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  inline-size: min(calc(100% - 1.25rem), 52rem);
+  max-block-size: 92dvh;
+  opacity: 0;
+  transform: scale(0.96) translateY(8px);
+  transition-property: opacity, transform, display, overlay;
+  transition-duration: 0.24s;
+  transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  transition-behavior: allow-discrete;
+}
+
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: rgb(6 4 3 / 0);
+  backdrop-filter: blur(0px);
+  transition-property: background-color, backdrop-filter, display, overlay;
+  transition-duration: 0.24s;
+  transition-timing-function: ease-out;
+  transition-behavior: allow-discrete;
+}
+
+:is(dialog[open]):where(:not([data-closing])) {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+
+  &::backdrop {
+    background-color: rgb(6 4 3 / 0.8);
+    backdrop-filter: blur(8px);
+
+    @starting-style {
+      background-color: rgb(6 4 3 / 0);
+      backdrop-filter: blur(0px);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog {
+    transform: none;
+    transition-duration: 0.1s;
+  }
+
+  :is(dialog[open]):where(:not([data-closing])) {
+    transform: none;
+
+    @starting-style {
+      transform: none;
+    }
+  }
+}
+
+/* Standard CSS Scrollbars with Legacy WebKit Fallback */
+.modal-scroller,
+body {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.modal-scroller {
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+}
+
+@supports not (scrollbar-color: auto) {
+  .modal-scroller::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .modal-scroller::-webkit-scrollbar-thumb,
+  body::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+  }
+
+  .modal-scroller::-webkit-scrollbar-track,
+  body::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+}
+
+/* Physics-Inspired Plaque & Shimenawa Animations */
+@keyframes emaSwing {
+  0% { transform: rotate(0deg); }
+  20% { transform: rotate(6.5deg); }
+  45% { transform: rotate(-5deg); }
+  70% { transform: rotate(2.8deg); }
+  85% { transform: rotate(-1.2deg); }
+  100% { transform: rotate(0deg); }
+}
+
+@keyframes shideSway {
+  0%, 100% { transform: rotate(-2deg) skewX(0deg); }
+  50% { transform: rotate(3.5deg) skewX(2deg); }
+}
+
+@keyframes floatSpark {
+  0% { opacity: 1; transform: translateY(0) scale(0.9); }
+  100% { opacity: 0; transform: translateY(-34px) scale(1.15); }
+}
+
+.animate-ema-swing {
+  transform-origin: 50% 4px;
+  animation: emaSwing 1.05s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.animate-shide {
+  transform-origin: top center;
+  animation: shideSway 5s ease-in-out infinite;
+}
+
+.animate-float-spark {
+  animation: floatSpark 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Utility to hide scrollbars cleanly on horizontal chip rails */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Canonical visually-hidden pattern (Forms §6) for honeypot / screen-reader-only elements */
+.visually-hidden {
+  position: absolute;
+  clip-path: inset(50%);
+  overflow: hidden;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  white-space: nowrap;
+}
+
+/* Layered non-rectangular drop-shadow for 5-sided pentagonal Ema plaques */
+.ema-pentagon-shadow {
+  filter:
+    drop-shadow(0 8px 10px rgb(0 0 0 / 0.52))
+    drop-shadow(0 20px 26px rgb(0 0 0 / 0.48));
+}
+
+/* Blender-baked 2.5D Ema Wood Surface with progressive image-set() delivery */
+.ema-wood-surface {
+  isolation: isolate;
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-blend-mode: normal;
+  box-shadow:
+    inset 0 1px 0 rgb(255 248 230 / 0.22),
+    inset 0 -2px 6px rgb(0 0 0 / 0.35);
+}
+
+.ema-wood-hinoki {
+  background-image: url("/textures/ema-hinoki.jpg");
+  background-image: image-set(
+    url("/textures/ema-hinoki.webp") type("image/webp") 1x,
+    url("/textures/ema-hinoki.jpg") type("image/jpeg") 1x
+  );
+}
+
+.ema-wood-sandalwood {
+  background-image: url("/textures/ema-sandalwood.jpg");
+  background-image: image-set(
+    url("/textures/ema-sandalwood.webp") type("image/webp") 1x,
+    url("/textures/ema-sandalwood.jpg") type("image/jpeg") 1x
+  );
+}
+
+.ema-wood-cedar {
+  background-image: url("/textures/ema-cedar.jpg");
+  background-image: image-set(
+    url("/textures/ema-cedar.webp") type("image/webp") 1x,
+    url("/textures/ema-cedar.jpg") type("image/jpeg") 1x
+  );
+}
+
+.ema-wood-vermilion {
+  background-image: url("/textures/ema-vermilion.jpg");
+  background-image: image-set(
+    url("/textures/ema-vermilion.webp") type("image/webp") 1x,
+    url("/textures/ema-vermilion.jpg") type("image/jpeg") 1x
+  );
+}
+
+.ema-wood-obsidian {
+  background-image: url("/textures/ema-obsidian.jpg");
+  background-image: image-set(
+    url("/textures/ema-obsidian.webp") type("image/webp") 1x,
+    url("/textures/ema-obsidian.jpg") type("image/jpeg") 1x
+  );
+}
+
+.ema-wood-kinpaku {
+  background-image: url("/textures/ema-kinpaku.jpg");
+  background-image: image-set(
+    url("/textures/ema-kinpaku.webp") type("image/webp") 1x,
+    url("/textures/ema-kinpaku.jpg") type("image/jpeg") 1x
+  );
+}
+
+/* Hand-stamped vermilion Hanko seal weathering mask */
+.ema-hanko-stamp {
+  -webkit-mask-image: radial-gradient(circle at 30% 25%, rgb(0 0 0 / 0.92) 0%, rgb(0 0 0 / 1) 70%);
+  mask-image: radial-gradient(circle at 30% 25%, rgb(0 0 0 / 0.92) 0%, rgb(0 0 0 / 1) 70%);
+}
+
+/* =========================================================================
+   🌸 Spring Morning / Sakura (朝桜) Theme Extension
+   Toggled independently while preserving 100% of the default Midnight theme
+   ========================================================================= */
+html.theme-sakura {
+  color-scheme: light;
+  --scrollbar-thumb: #d9b49b;
+  --scrollbar-track: #fbf6ef;
+}
+
+html.theme-sakura body {
+  background-color: #faf5ee;
+  color: #2b1d16;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* App shell container in Sakura mode */
+html.theme-sakura .shrine-app-shell {
+  background-color: #faf5ee !important;
+  color: #2b1d16 !important;
+  background-image:
+    radial-gradient(ellipse 85% 55% at 50% 0%, rgba(254, 226, 235, 0.75) 0%, transparent 75%),
+    radial-gradient(ellipse 65% 45% at 85% 25%, rgba(254, 243, 230, 0.7) 0%, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 15% 40%, rgba(254, 230, 238, 0.55) 0%, transparent 65%);
+}
+
+/* Header in Sakura mode */
+html.theme-sakura header {
+  background-color: rgba(255, 252, 248, 0.9) !important;
+  border-bottom-color: rgba(244, 185, 195, 0.45) !important;
+  box-shadow: 0 4px 20px -2px rgba(220, 150, 160, 0.12) !important;
+}
+
+html.theme-sakura header .text-amber-100 {
+  color: #381f16 !important;
+}
+
+html.theme-sakura header .text-zinc-400 {
+  color: #7d6555 !important;
+}
+
+html.theme-sakura .header-btn {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(235, 190, 195, 0.6) !important;
+  color: #5c4438 !important;
+}
+
+html.theme-sakura .header-btn:hover {
+  background-color: #fdf2f4 !important;
+  color: #be123c !important;
+  border-color: rgba(244, 114, 142, 0.5) !important;
+}
+
+/* Hero Pavilion in Sakura mode */
+html.theme-sakura .shrine-hero-section {
+  background-color: rgba(255, 253, 250, 0.92) !important;
+  border-color: rgba(244, 163, 179, 0.45) !important;
+  box-shadow: 0 20px 45px -15px rgba(225, 112, 133, 0.16), 0 0 0 1px rgba(244, 163, 179, 0.22) !important;
+}
+
+html.theme-sakura .shrine-hero-backdrop {
+  opacity: 0.12 !important;
+  filter: saturate(1.2) brightness(1.1);
+}
+
+html.theme-sakura .shrine-hero-overlay {
+  background: linear-gradient(180deg, rgba(255, 250, 252, 0.45) 0%, rgba(254, 246, 242, 0.88) 60%, #faf5ee 100%) !important;
+}
+
+html.theme-sakura .shrine-hero-title {
+  color: #2c160f !important;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.9) !important;
+}
+
+html.theme-sakura .shrine-hero-desc {
+  color: #5a4436 !important;
+}
+
+html.theme-sakura .shrine-hero-section .bg-amber-950\/60 {
+  background-color: rgba(255, 241, 242, 0.9) !important;
+  border-color: rgba(244, 163, 179, 0.5) !important;
+  color: #be123c !important;
+}
+
+html.theme-sakura .shrine-hero-section .bg-amber-950\/30 {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  border-color: rgba(244, 163, 179, 0.35) !important;
+}
+
+html.theme-sakura .shrine-hero-section .text-zinc-400 {
+  color: #7d6555 !important;
+}
+
+/* Filter & Search Bar in Sakura mode */
+html.theme-sakura .shrine-filter-section {
+  background-color: rgba(255, 253, 250, 0.9) !important;
+  border-color: rgba(235, 195, 185, 0.55) !important;
+  box-shadow: 0 12px 35px -10px rgba(180, 110, 100, 0.1) !important;
+}
+
+html.theme-sakura .shrine-search-input {
+  background-color: #ffffff !important;
+  border-color: #ebdcd0 !important;
+  color: #2c160f !important;
+}
+
+html.theme-sakura .shrine-search-input::placeholder {
+  color: #a89485 !important;
+}
+
+html.theme-sakura .shrine-search-input:focus {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.12) !important;
+}
+
+html.theme-sakura .shrine-filter-section .bg-zinc-950 {
+  background-color: #ffffff !important;
+  border-color: #eddcd0 !important;
+}
+
+html.theme-sakura .shrine-filter-section .text-zinc-400 {
+  color: #7d6555 !important;
+}
+
+html.theme-sakura .shrine-filter-section .border-zinc-800 {
+  border-color: #ebdcd0 !important;
+}
+
+/* Category Pills in Sakura mode */
+html.theme-sakura .shrine-filter-section button.border-zinc-800 {
+  background-color: #ffffff !important;
+  border-color: #ebdcd0 !important;
+  color: #5c4438 !important;
+}
+
+html.theme-sakura .shrine-filter-section button.border-zinc-800:hover {
+  background-color: #fff1f2 !important;
+  border-color: #f472b6 !important;
+  color: #9d174d !important;
+}
+
+/* Rack Crossbeam in Sakura mode: Warm Hinoki Cypress Timber */
+html.theme-sakura .shrine-rack-beam {
+  background: linear-gradient(180deg, #c79a66 0%, #ad804d 55%, #926638 100%) !important;
+  border-top-color: #dfb98c !important;
+  border-bottom-color: #78522b !important;
+  box-shadow: 0 6px 20px -4px rgba(140, 85, 40, 0.25) !important;
+}
+
+html.theme-sakura .shrine-rack-beam .text-amber-200\/60 {
+  color: #fff3e6 !important;
+  text-shadow: 0 1px 2px rgba(80, 45, 15, 0.4);
+}
+
+/* Open Hook / Next Plaque Slot in Sakura mode */
+html.theme-sakura .shrine-open-hook-card {
+  background-color: rgba(255, 255, 255, 0.72) !important;
+  border-color: rgba(244, 163, 179, 0.45) !important;
+  color: #9f5062 !important;
+}
+
+html.theme-sakura .shrine-open-hook-card:hover {
+  background-color: rgba(255, 241, 244, 0.9) !important;
+  color: #e11d48 !important;
+  border-color: rgba(244, 63, 94, 0.5) !important;
+}
+
+html.theme-sakura .shrine-open-hook-card .text-amber-200 {
+  color: #3b1e15 !important;
+}
+
+html.theme-sakura .shrine-open-hook-card .text-zinc-400 {
+  color: #7d6555 !important;
+}
+
+/* Plaque 3D Drop Shadow in Sakura daylight */
+html.theme-sakura .ema-pentagon-shadow {
+  filter:
+    drop-shadow(0 6px 8px rgb(140 95 65 / 0.18))
+    drop-shadow(0 18px 24px rgb(140 95 65 / 0.16)) !important;
+}
+
+/* Dialogs & Modals in Sakura mode */
+html.theme-sakura dialog > div,
+html.theme-sakura dialog > form {
+  background-color: #fffdfa !important;
+  border-color: rgba(244, 163, 179, 0.45) !important;
+  color: #2b1d16 !important;
+  box-shadow: 0 25px 60px -15px rgba(180, 95, 110, 0.22) !important;
+}
+
+html.theme-sakura dialog .bg-zinc-950\/95,
+html.theme-sakura dialog .bg-zinc-950,
+html.theme-sakura dialog .bg-zinc-950\/90,
+html.theme-sakura dialog .bg-zinc-900 {
+  background-color: #fbf7f2 !important;
+}
+
+html.theme-sakura dialog .border-zinc-800,
+html.theme-sakura dialog .border-zinc-700 {
+  border-color: #ebdcd0 !important;
+}
+
+html.theme-sakura dialog .text-zinc-100,
+html.theme-sakura dialog .text-zinc-200,
+html.theme-sakura dialog .text-amber-100 {
+  color: #2c160f !important;
+}
+
+html.theme-sakura dialog .text-zinc-300,
+html.theme-sakura dialog .text-zinc-400,
+html.theme-sakura dialog .text-zinc-500 {
+  color: #6e584a !important;
+}
+
+html.theme-sakura dialog input,
+html.theme-sakura dialog select,
+html.theme-sakura dialog textarea {
+  background-color: #ffffff !important;
+  border-color: #ebdcd0 !important;
+  color: #2c160f !important;
+}
+
+html.theme-sakura dialog input::placeholder,
+html.theme-sakura dialog textarea::placeholder {
+  color: #a89485 !important;
+}
+
+html.theme-sakura dialog input:focus,
+html.theme-sakura dialog select:focus,
+html.theme-sakura dialog textarea:focus {
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.12) !important;
+}

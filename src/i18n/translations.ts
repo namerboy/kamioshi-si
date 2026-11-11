@@ -215,7 +215,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       termsBtn: 'Terms',
       termsTitle: 'Terms of Use & Guidelines',
       contactBtn: 'Contact',
-      contactTitle: 'Contact the Shrinekeeper',
+      contactTitle: 'Contact kamioshi.si',
       hangBtn: 'Hang a Plaque',
       mobileDockWall: 'Wall',
       mobileDockSearch: 'Search',
@@ -394,8 +394,8 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       contactLink: 'Contact'
     },
     contactModal: {
-      title: 'Contact the Shrinekeeper',
-      subtitle: 'Questions, moderation requests, or suggestions • Replies sent to your email',
+      title: 'Contact kamioshi.si',
+      subtitle: 'Questions, feedback, or plaque removal requests • Replies sent to your email',
       closeAria: 'Close contact modal',
       nameLabel: 'Your Name / Nickname',
       namePlaceholder: 'e.g. Aoi, Fan, Anonymous',
@@ -417,7 +417,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       submittingBtn: 'Delivering...',
       cancelBtn: 'Cancel',
       successTitle: 'Message Delivered',
-      successDesc: 'Thank you for reaching out. Your message has been sent to the shrinekeeper.',
+      successDesc: 'Thank you for reaching out. Your message has been sent, and we will reply to your email shortly.',
       closeBtn: 'Close',
       sendAnotherBtn: 'Send Another Message'
     }
@@ -640,7 +640,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       submittingBtn: '送信中...',
       cancelBtn: 'キャンセル',
       successTitle: '送信完了',
-      successDesc: 'メッセージが社務所へ届けられました。返信まで今しばらくお待ちください。',
+      successDesc: 'メッセージが送信されました。返信まで今しばらくお待ちください。',
       closeBtn: '閉じる',
       sendAnotherBtn: '別のメッセージを送る'
     }

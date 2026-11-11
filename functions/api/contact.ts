@@ -91,7 +91,7 @@ export const onRequestPost = async (ctx: PagesContext): Promise<Response> => {
     if (upstreamRes.ok || upstreamRes.status === 302 || upstreamRes.status === 303) {
       return jsonResponse({
         ok: true,
-        message: 'Your message has been delivered to the shrinekeeper.'
+        message: 'Your message has been sent successfully.'
       });
     }
 

@@ -62,6 +62,13 @@ export default defineConfig({
   plugins: [react(), shrineSecurityHeadersPlugin()],
   server: {
     port: 3333,
-    open: false
+    open: false,
+    proxy: {
+      '/api': {
+        target: 'https://kamioshi.si',
+        changeOrigin: true,
+        secure: true
+      }
+    }
   }
 });

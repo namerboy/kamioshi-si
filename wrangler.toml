@@ -1,3 +1,8 @@
 name = "kamioshi-si"
 compatibility_date = "2024-11-01"
 pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kamioshi-db"
+database_id = "a660b908-9364-442b-b4f7-bacb5dd1719f"

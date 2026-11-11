@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { EmaPlaque, ReportReason } from './types';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { EmaPlaque, ReportReason, ShrineStats, ShrineTag } from './types';
 import { INITIAL_EMA_PLAQUES } from './data/emaData';
 import { CourtyardCanvas } from './components/CourtyardCanvas';
 import { Header } from './components/Header';
@@ -10,7 +10,6 @@ import { TermsModal } from './components/TermsModal';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { ThemeProvider } from './theme/ThemeContext';
 import {
-  sanitizeStoredPlaques,
   tryRecordBellRing,
   decodeSafePlaqueFromHash
 } from './utils/antiSpam';
@@ -20,23 +19,28 @@ import {
   reportAndHidePlaque,
   clearHiddenPlaques
 } from './utils/aiGuardian';
+import {
+  fetchShrinePage,
+  fetchPlaqueByCoordinate,
+  createShrinePlaque,
+  ringShrinePlaqueBell,
+  deleteOwnShrinePlaque,
+  reportShrinePlaqueApi,
+  computeLocalStats
+} from './utils/shrineApi';
 
 const LOCAL_STORAGE_KEY = 'kamioshi_fresh_v5';
 const DEFAULT_DOC_TITLE = 'Kamioshi.si — Wooden Plaque Wall (絵馬掛け)';
 
 export const App: React.FC = () => {
-  const [plaques, setPlaques] = useState<EmaPlaque[]>(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        const sanitized = sanitizeStoredPlaques(JSON.parse(saved));
-        if (sanitized) return sanitized;
-      }
-    } catch {
-      // safe fallback
-    }
-    return INITIAL_EMA_PLAQUES;
-  });
+  const [plaques, setPlaques] = useState<EmaPlaque[]>(INITIAL_EMA_PLAQUES);
+  const [stats, setStats] = useState<ShrineStats>(() => computeLocalStats(INITIAL_EMA_PLAQUES));
+  const [topRevered, setTopRevered] = useState<EmaPlaque[]>([]);
+  const [popularTags, setPopularTags] = useState<ShrineTag[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const [hiddenVersion, setHiddenVersion] = useState(0);
   const [selectedPlaque, setSelectedPlaque] = useState<EmaPlaque | null>(null);
@@ -44,14 +48,72 @@ export const App: React.FC = () => {
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
   const [initialOshiName, setInitialOshiName] = useState<string>('');
 
-  // Shared filter state so Header Home button & EmaWall stay in sync
+  // Shared filter & sort state
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'bows'>('newest');
 
   // Subtle swing when hanging a new plaque or triggering a shrine breeze
   const [windSwinging, setWindSwinging] = useState(false);
   const windTimeoutRef = useRef<number | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search query (220ms) so fast typing does not waste D1 row reads
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 220);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Load first page from Cloudflare D1 (or local fallback) when filters/sort change
+  const loadFirstPage = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const result = await fetchShrinePage({
+        category: selectedCategory,
+        sort: sortBy,
+        q: debouncedQuery,
+        cursor: null
+      });
+      setPlaques(result.plaques);
+      setNextCursor(result.nextCursor);
+      setHasMore(result.hasMore);
+      if (result.stats) setStats(result.stats);
+      if (result.topRevered) setTopRevered(result.topRevered);
+      if (result.popularTags) setPopularTags(result.popularTags);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedCategory, sortBy, debouncedQuery]);
+
+  useEffect(() => {
+    loadFirstPage();
+  }, [loadFirstPage]);
+
+  // Load next page of 24 plaques via keyset cursor
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMore || !nextCursor || isLoadingMore) return;
+    setIsLoadingMore(true);
+    try {
+      const result = await fetchShrinePage({
+        category: selectedCategory,
+        sort: sortBy,
+        q: debouncedQuery,
+        cursor: nextCursor
+      });
+      setPlaques((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const newItems = result.plaques.filter((p) => !existingIds.has(p.id));
+        return [...prev, ...newItems];
+      });
+      setNextCursor(result.nextCursor);
+      setHasMore(result.hasMore);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [hasMore, nextCursor, isLoadingMore, selectedCategory, sortBy, debouncedQuery]);
 
   const triggerShrineBreeze = () => {
     setWindSwinging(true);
@@ -73,47 +135,41 @@ export const App: React.FC = () => {
     }
   };
 
-  // Live cross-tab synchronization via storage event
-  useEffect(() => {
-    const handleStorageSync = (e: StorageEvent) => {
-      if (e.key === LOCAL_STORAGE_KEY && e.newValue) {
-        try {
-          const sanitized = sanitizeStoredPlaques(JSON.parse(e.newValue));
-          if (sanitized) setPlaques(sanitized);
-        } catch {
-          // ignore malformed cross-tab data
-        }
-      } else if (e.key === LOCAL_STORAGE_KEY && e.newValue === null) {
-        setPlaques([]);
-      }
-    };
-    window.addEventListener('storage', handleStorageSync);
-    return () => window.removeEventListener('storage', handleStorageSync);
-  }, []);
-
   // Visible plaques filtered through the Bottled AI Guardian & user's local hidden list
   const visiblePlaques = useMemo(() => {
     return filterSafePlaques(plaques);
   }, [plaques, hiddenVersion]);
 
+  const visibleTopRevered = useMemo(() => {
+    return filterSafePlaques(topRevered);
+  }, [topRevered, hiddenVersion]);
+
   const hiddenCount = useMemo(() => {
     return getHiddenPlaqueIds().size;
   }, [hiddenVersion]);
 
-  // Compute next coordinate number (starts at #1 if empty, otherwise max + 1)
-  const nextCoordinate =
-    plaques.length > 0
-      ? Math.max(...plaques.map((p) => p.coordinate || 0)) + 1
-      : 1;
+  // O(1) next coordinate from D1 pre-aggregated stats (no array spread)
+  const nextCoordinate = (stats.maxCoordinate || 0) + 1;
 
   // Handle URL hash routing on initial load and hashchange (e.g., #ema=1 or #ema=13&p=...)
   useEffect(() => {
-    const handleHash = () => {
+    const handleHash = async () => {
       const hash = window.location.hash;
-      if (hash.startsWith('#ema=')) {
-        const decoded = decodeSafePlaqueFromHash(hash, plaques);
-        if (decoded) {
-          setSelectedPlaque(decoded);
+      if (!hash.startsWith('#ema=')) return;
+
+      const decoded = decodeSafePlaqueFromHash(hash, plaques);
+      if (decoded) {
+        setSelectedPlaque(decoded);
+        return;
+      }
+
+      // Direct D1 coordinate lookup when only #ema=<number> is present
+      const params = new URLSearchParams(hash.slice(1));
+      const coordNum = parseInt(params.get('ema') || '', 10);
+      if (!isNaN(coordNum) && coordNum > 0) {
+        const remotePlaque = await fetchPlaqueByCoordinate(coordNum);
+        if (remotePlaque) {
+          setSelectedPlaque(remotePlaque);
         }
       }
     };
@@ -136,6 +192,7 @@ export const App: React.FC = () => {
   const handleResetHome = () => {
     setSearchQuery('');
     setSelectedCategory('all');
+    setSortBy('newest');
     setSelectedPlaque(null);
     if (window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname);
@@ -143,69 +200,86 @@ export const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Handle ringing bell on a plaque (rate-limited & deduplicated per plaque)
+  // Handle ringing bell on a plaque (optimistic UI + D1 atomic increment)
   const handleBow = (id: string) => {
     if (!tryRecordBellRing(id, true)) {
       return;
     }
-    setPlaques((prev) => {
-      const updated = prev.map((p) => (p.id === id ? { ...p, bowCount: p.bowCount + 1 } : p));
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // quota fallback
-      }
-      return updated;
-    });
+    setPlaques((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, bowCount: p.bowCount + 1 } : p))
+    );
+    setTopRevered((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, bowCount: p.bowCount + 1 } : p))
+    );
+    setStats((prev) => ({
+      ...prev,
+      totalBells: prev.totalBells + 1
+    }));
     setSelectedPlaque((prev) =>
       prev && prev.id === id ? { ...prev, bowCount: prev.bowCount + 1 } : prev
     );
+
+    ringShrinePlaqueBell(id).then((serverBows) => {
+      if (typeof serverBows === 'number') {
+        setPlaques((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, bowCount: serverBows } : p))
+        );
+        setSelectedPlaque((prev) =>
+          prev && prev.id === id ? { ...prev, bowCount: serverBows } : prev
+        );
+      }
+    });
   };
 
-  // Handle dedicating a new plaque
-  const handleHangPlaque = (
+  // Handle dedicating a new plaque (saved to Cloudflare D1 + local ownership record)
+  const handleHangPlaque = async (
     newPlaqueData: Omit<EmaPlaque, 'id' | 'coordinate' | 'createdAt' | 'bowCount'>
   ) => {
-    const newPlaque: EmaPlaque = {
-      ...newPlaqueData,
-      id: `ema_${Date.now()}`,
-      coordinate: nextCoordinate,
-      bowCount: 1,
-      createdAt: new Date().toISOString()
-    };
+    const { plaque: createdPlaque, stats: updatedStats } = await createShrinePlaque(newPlaqueData);
 
-    setPlaques((prev) => {
-      const updated = [newPlaque, ...prev];
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated.slice(0, 200)));
-      } catch {
-        // storage quota fallback
-      }
-      return updated;
-    });
+    setPlaques((prev) => [createdPlaque, ...prev.filter((p) => p.id !== createdPlaque.id)]);
+    if (updatedStats) {
+      setStats(updatedStats);
+    } else {
+      setStats((prev) => ({
+        ...prev,
+        totalPlaques: prev.totalPlaques + 1,
+        totalBells: prev.totalBells + 1,
+        maxCoordinate: Math.max(prev.maxCoordinate, createdPlaque.coordinate),
+        categoryCounts: {
+          ...prev.categoryCounts,
+          all: (prev.categoryCounts.all || 0) + 1,
+          [createdPlaque.category]: (prev.categoryCounts[createdPlaque.category] || 0) + 1
+        }
+      }));
+    }
+
+    setTopRevered((prev) =>
+      [...prev.filter((p) => p.id !== createdPlaque.id), createdPlaque]
+        .sort((a, b) => b.bowCount - a.bowCount)
+        .slice(0, 3)
+    );
 
     triggerShrineBreeze();
-
-    setSelectedPlaque(newPlaque);
+    setSelectedPlaque(createdPlaque);
   };
 
-  // Delete an individual plaque
-  const handleDeletePlaque = (id: string) => {
-    setPlaques((prev) => {
-      const updated = prev.filter((p) => p.id !== id);
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // quota fallback
-      }
-      return updated;
-    });
+  // Delete an individual plaque owned by the current visitor
+  const handleDeletePlaque = async (id: string) => {
+    setPlaques((prev) => prev.filter((p) => p.id !== id));
+    setTopRevered((prev) => prev.filter((p) => p.id !== id));
     setSelectedPlaque(null);
+
+    const res = await deleteOwnShrinePlaque(id);
+    if (res.stats) {
+      setStats(res.stats);
+    }
   };
 
-  // Report & quarantine/hide a plaque from the user's local wall
+  // Report & quarantine/hide a plaque from the user's local wall + notify D1 moderation counter
   const handleReportPlaque = (id: string, reason: ReportReason) => {
     reportAndHidePlaque(id, reason);
+    reportShrinePlaqueApi(id, reason);
     setHiddenVersion((v) => v + 1);
     setSelectedPlaque(null);
   };
@@ -216,15 +290,15 @@ export const App: React.FC = () => {
     setHiddenVersion((v) => v + 1);
   };
 
-  // Clear all local plaques from Terms & Conditions modal
+  // Clear local browser cache from Terms & Conditions modal
   const handleClearPlaques = () => {
-    setPlaques([]);
     setSelectedPlaque(null);
     try {
       localStorage.removeItem(LOCAL_STORAGE_KEY);
     } catch {
       // ignore
     }
+    loadFirstPage();
   };
 
   const openHangModal = (prefillOshi = '') => {
@@ -236,68 +310,77 @@ export const App: React.FC = () => {
     <ThemeProvider>
       <LanguageProvider>
         <div className="min-h-[100dvh] bg-[#0c0a09] text-zinc-100 flex flex-col font-sans selection:bg-amber-600 selection:text-white relative shrine-app-shell">
-        {/* 0. Blender-Rendered 3D Falling Pink Sakura Petals Background */}
-        <CourtyardCanvas />
+          {/* 0. Blender-Rendered 3D Falling Pink Sakura Petals Background */}
+          <CourtyardCanvas />
 
-        {/* 1. Header Navigation & Mobile Thumb-Zone Bottom Dock */}
-        <Header
-          onOpenHangModal={() => openHangModal('')}
-          onOpenTermsModal={() => setIsTermsModalOpen(true)}
-          onResetHome={handleResetHome}
-          onFocusSearch={handleFocusSearch}
-          totalVows={visiblePlaques.length}
-        />
-
-        {/* 2. Main Ema Wall Grid */}
-        <main className="flex-grow relative z-10">
-          <EmaWall
-            plaques={visiblePlaques}
-            windSwinging={windSwinging}
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            searchInputRef={searchInputRef}
-            onTriggerBreeze={triggerShrineBreeze}
-            onBow={handleBow}
-            onSelectPlaque={(plaque) => setSelectedPlaque(plaque)}
-            onOpenHangModal={(prefill) => openHangModal(prefill || '')}
+          {/* 1. Header Navigation & Mobile Thumb-Zone Bottom Dock */}
+          <Header
+            onOpenHangModal={() => openHangModal('')}
             onOpenTermsModal={() => setIsTermsModalOpen(true)}
+            onResetHome={handleResetHome}
+            onFocusSearch={handleFocusSearch}
+            totalVows={stats.totalPlaques}
           />
-        </main>
 
-        {/* 3. Hang Ema Plaque Modal */}
-        <HangEmaModal
-          isOpen={isHangModalOpen}
-          onClose={() => setIsHangModalOpen(false)}
-          onOpenTerms={() => setIsTermsModalOpen(true)}
-          onHangPlaque={handleHangPlaque}
-          nextCoordinate={nextCoordinate}
-          initialOshiName={initialOshiName}
-          existingPlaques={visiblePlaques}
-        />
+          {/* 2. Main Ema Wall Grid */}
+          <main className="flex-grow relative z-10">
+            <EmaWall
+              plaques={visiblePlaques}
+              stats={stats}
+              topRevered={visibleTopRevered}
+              popularTags={popularTags}
+              hasMore={hasMore}
+              isLoading={isLoading}
+              isLoadingMore={isLoadingMore}
+              onLoadMore={handleLoadMore}
+              sortBy={sortBy}
+              setSortBy={setSortBy}
+              windSwinging={windSwinging}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+              searchInputRef={searchInputRef}
+              onTriggerBreeze={triggerShrineBreeze}
+              onBow={handleBow}
+              onSelectPlaque={(plaque) => setSelectedPlaque(plaque)}
+              onOpenHangModal={(prefill) => openHangModal(prefill || '')}
+              onOpenTermsModal={() => setIsTermsModalOpen(true)}
+            />
+          </main>
 
-        {/* 4. Souvenir & Keepsake View Modal */}
-        <SouvenirModal
-          plaque={selectedPlaque}
-          onClose={() => setSelectedPlaque(null)}
-          onBow={handleBow}
-          onDelete={handleDeletePlaque}
-          onReport={handleReportPlaque}
-        />
+          {/* 3. Hang Ema Plaque Modal */}
+          <HangEmaModal
+            isOpen={isHangModalOpen}
+            onClose={() => setIsHangModalOpen(false)}
+            onOpenTerms={() => setIsTermsModalOpen(true)}
+            onHangPlaque={handleHangPlaque}
+            nextCoordinate={nextCoordinate}
+            initialOshiName={initialOshiName}
+            existingPlaques={visiblePlaques}
+          />
 
-        {/* 5. Terms, Disclaimers & AI Safety Charter Modal */}
-        <TermsModal
-          isOpen={isTermsModalOpen}
-          onClose={() => setIsTermsModalOpen(false)}
-          plaques={visiblePlaques}
-          hiddenCount={hiddenCount}
-          onRestoreHidden={handleRestoreHidden}
-          onClearPlaques={handleClearPlaques}
-        />
-      </div>
-    </LanguageProvider>
-  </ThemeProvider>
+          {/* 4. Souvenir & Keepsake View Modal */}
+          <SouvenirModal
+            plaque={selectedPlaque}
+            onClose={() => setSelectedPlaque(null)}
+            onBow={handleBow}
+            onDelete={handleDeletePlaque}
+            onReport={handleReportPlaque}
+          />
+
+          {/* 5. Terms, Disclaimers & AI Safety Charter Modal */}
+          <TermsModal
+            isOpen={isTermsModalOpen}
+            onClose={() => setIsTermsModalOpen(false)}
+            plaques={visiblePlaques}
+            hiddenCount={hiddenCount}
+            onRestoreHidden={handleRestoreHidden}
+            onClearPlaques={handleClearPlaques}
+          />
+        </div>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 };
 

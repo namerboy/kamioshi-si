@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { EmaPlaque } from '../types';
+import React, { useEffect, useRef, useState } from 'react';
+import { EmaPlaque, ShrineStats, ShrineTag } from '../types';
 import { EmaCard } from './EmaCard';
 import { CATEGORY_LABELS } from '../data/emaData';
 import { shrineAudio } from '../audio/synth';
@@ -16,6 +16,15 @@ import {
 
 interface EmaWallProps {
   plaques: EmaPlaque[];
+  stats: ShrineStats;
+  topRevered: EmaPlaque[];
+  popularTags: ShrineTag[];
+  hasMore: boolean;
+  isLoading: boolean;
+  isLoadingMore: boolean;
+  onLoadMore: () => void;
+  sortBy: 'newest' | 'oldest' | 'bows';
+  setSortBy: (s: 'newest' | 'oldest' | 'bows') => void;
   onBow: (id: string) => void;
   onSelectPlaque: (plaque: EmaPlaque) => void;
   onOpenHangModal: (prefillName?: string) => void;
@@ -57,11 +66,19 @@ const runViewTransition = (updateFn: () => void, focusElement?: HTMLElement | nu
 
 export const EmaWall: React.FC<EmaWallProps> = ({
   plaques,
+  stats,
+  topRevered,
+  popularTags,
+  hasMore,
+  isLoading,
+  isLoadingMore,
+  onLoadMore,
+  sortBy,
+  setSortBy,
   onBow,
   onSelectPlaque,
   onOpenHangModal,
   onOpenTermsModal,
-  onTriggerBreeze,
   searchInputRef,
   windSwinging,
   searchQuery,
@@ -69,71 +86,37 @@ export const EmaWall: React.FC<EmaWallProps> = ({
   selectedCategory,
   setSelectedCategory
 }) => {
-  const { t } = useLanguage();
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'bows'>('newest');
+  const { t, language } = useLanguage();
   const [compactView, setCompactView] = useState(false);
-  const rackHeadingRef = React.useRef<HTMLSpanElement | null>(null);
+  const rackHeadingRef = useRef<HTMLSpanElement | null>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
 
-  // Unique cities represented
-  const uniqueLocations = useMemo(() => {
-    const locs = new Set(plaques.map((p) => p.location.trim().toLowerCase()).filter(Boolean));
-    return locs.size;
-  }, [plaques]);
+  // Automatic infinite scroll using IntersectionObserver (loads 24 plaques per page from D1)
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || !hasMore || isLoading || isLoadingMore) return;
 
-  // Total bells rung across all plaques on the wall
-  const totalBells = useMemo(() => {
-    return plaques.reduce((acc, p) => acc + p.bowCount, 0);
-  }, [plaques]);
-
-  // Category counts
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: plaques.length };
-    for (const p of plaques) {
-      counts[p.category] = (counts[p.category] || 0) + 1;
-    }
-    return counts;
-  }, [plaques]);
-
-  // Next plaque coordinate
-  const nextCoord = useMemo(() => {
-    return plaques.length > 0 ? Math.max(...plaques.map((p) => p.coordinate || 0)) + 1 : 1;
-  }, [plaques]);
-
-  // Top 3 most revered plaques by bell rings
-  const topReveredPlaques = useMemo(() => {
-    return [...plaques].sort((a, b) => b.bowCount - a.bowCount).slice(0, 3);
-  }, [plaques]);
-
-  // Filtered & sorted plaques
-  const filteredPlaques = useMemo(() => {
-    return plaques
-      .filter((p) => {
-        if (selectedCategory !== 'all' && p.category !== selectedCategory) {
-          return false;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          onLoadMore();
         }
-        if (searchQuery.trim()) {
-          const query = searchQuery.toLowerCase().trim();
-          const matchName = p.kamioshiName.toLowerCase().includes(query);
-          const matchMsg = p.message.toLowerCase().includes(query);
-          const matchLoc = p.location.toLowerCase().includes(query);
-          const matchAuthor = p.authorName.toLowerCase().includes(query);
-          const matchCoord = p.coordinate.toString().includes(query);
-          return matchName || matchMsg || matchLoc || matchAuthor || matchCoord;
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'bows') {
-          return b.bowCount - a.bowCount;
-        }
-        if (sortBy === 'oldest') {
-          return a.coordinate - b.coordinate;
-        }
-        return b.coordinate - a.coordinate;
-      });
-  }, [plaques, selectedCategory, searchQuery, sortBy]);
+      },
+      { rootMargin: '360px 0px' }
+    );
 
-  const currentCategoryLabel = t.categories[selectedCategory] || CATEGORY_LABELS[selectedCategory]?.label || selectedCategory;
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, isLoading, isLoadingMore, onLoadMore]);
+
+  const totalPlaques = stats.totalPlaques;
+  const uniqueLocations = stats.uniqueLocations;
+  const totalBells = stats.totalBells;
+  const categoryCounts = stats.categoryCounts;
+  const nextCoord = stats.maxCoordinate + 1;
+
+  const currentCategoryLabel =
+    t.categories[selectedCategory] || CATEGORY_LABELS[selectedCategory]?.label || selectedCategory;
 
   return (
     <div className="relative z-10 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-6 sm:space-y-8">
@@ -181,13 +164,13 @@ export const EmaWall: React.FC<EmaWallProps> = ({
             {t.hero.desc}
           </p>
 
-          {/* Live Dynamic Stats Bar */}
+          {/* Live Dynamic Stats Bar (O(1) Pre-Aggregated from D1) */}
           <div className="pt-1 flex items-center justify-center gap-4 sm:gap-10 text-xs font-mono text-zinc-400">
             <div className="flex flex-col items-center">
               <span className="text-amber-400 font-bold text-sm sm:text-lg">
-                {plaques.length.toLocaleString()}
+                {totalPlaques.toLocaleString()}
               </span>
-              <span className="text-[11px] sm:text-xs">{t.hero.statPlaques(plaques.length)}</span>
+              <span className="text-[11px] sm:text-xs">{t.hero.statPlaques(totalPlaques)}</span>
             </div>
             <div className="text-zinc-700">•</div>
             <div className="flex flex-col items-center">
@@ -353,35 +336,66 @@ export const EmaWall: React.FC<EmaWallProps> = ({
                       isSelected ? 'bg-black/20 text-zinc-950 font-bold' : 'bg-zinc-800 text-zinc-400'
                     }`}
                   >
-                    {count}
+                    {count.toLocaleString()}
                   </span>
                 )}
               </button>
             );
           })}
         </div>
-        {/* Top Revered Spotlight Bar */}
-        {topReveredPlaques.length > 0 && !searchQuery && selectedCategory === 'all' && (
+
+        {/* Top Revered Spotlight & Popular Kamioshi Tags Bar */}
+        {(topRevered.length > 0 || popularTags.length > 0) && !searchQuery && selectedCategory === 'all' && (
           <div className="pt-2 border-t border-zinc-800/80 flex flex-wrap items-center gap-2 text-xs">
-            <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-amber-400 font-semibold mr-1">
-              <SuzuBellIcon size={13} color="#f59e0b" />
-              <span>{t.rack.topReveredTitle}:</span>
-            </span>
-            {topReveredPlaques.map((p, idx) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  shrineAudio.playWoodClack();
-                  onSelectPlaque(p);
-                }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-950/90 hover:bg-amber-950/50 border border-zinc-800 hover:border-amber-700/50 text-zinc-200 hover:text-amber-200 transition-colors"
-              >
-                <span className="font-mono text-[10px] text-amber-400 font-bold">#{idx + 1}</span>
-                <span className="font-serif font-semibold truncate max-w-[140px]">{p.kamioshiName}</span>
-                <span className="font-mono text-[10px] text-zinc-400">({p.bowCount})</span>
-              </button>
-            ))}
+            {topRevered.length > 0 && (
+              <>
+                <span className="inline-flex items-center gap-1.5 font-mono text-[11px] text-amber-400 font-semibold mr-1">
+                  <SuzuBellIcon size={13} color="#f59e0b" />
+                  <span>{t.rack.topReveredTitle}:</span>
+                </span>
+                {topRevered.map((p, idx) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      shrineAudio.playWoodClack();
+                      onSelectPlaque(p);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-950/90 hover:bg-amber-950/50 border border-zinc-800 hover:border-amber-700/50 text-zinc-200 hover:text-amber-200 transition-colors"
+                  >
+                    <span className="font-mono text-[10px] text-amber-400 font-bold">#{idx + 1}</span>
+                    <span className="font-serif font-semibold truncate max-w-[140px]">{p.kamioshiName}</span>
+                    <span className="font-mono text-[10px] text-zinc-400">({p.bowCount})</span>
+                  </button>
+                ))}
+              </>
+            )}
+
+            {popularTags.length > 3 && (
+              <>
+                <span className="text-zinc-700 hidden sm:inline">•</span>
+                <span className="inline-flex items-center gap-1 font-mono text-[11px] text-zinc-400">
+                  <SacredSparkleIcon size={12} color="#f59e0b" />
+                  <span>{language === 'ja' ? '人気のタグ:' : 'Tags:'}</span>
+                </span>
+                {popularTags.slice(0, 6).map((tag) => (
+                  <button
+                    key={tag.tagNorm}
+                    type="button"
+                    onClick={() => {
+                      shrineAudio.playWoodClack();
+                      setSearchQuery(tag.displayName);
+                    }}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-zinc-950/70 hover:bg-zinc-800 border border-zinc-800/80 text-[11px] text-zinc-300 hover:text-amber-300 transition-colors"
+                  >
+                    <span className="truncate max-w-[110px]">#{tag.displayName}</span>
+                    {tag.plaqueCount > 1 && (
+                      <span className="font-mono text-[10px] text-zinc-500">{tag.plaqueCount}</span>
+                    )}
+                  </button>
+                ))}
+              </>
+            )}
           </div>
         )}
       </section>
@@ -411,69 +425,105 @@ export const EmaWall: React.FC<EmaWallProps> = ({
           </div>
         </div>
 
-        {filteredPlaques.length > 0 ? (
-          <div
-            className={`grid ${
-              compactView
-                ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-y-7 sm:gap-y-10 gap-x-2.5 sm:gap-x-4'
-                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-y-8 sm:gap-y-12 gap-x-5 sm:gap-x-6'
-            } justify-items-center pt-1 pb-6`}
-          >
-            {filteredPlaques.map((plaque, idx) => (
-              <EmaCard
-                key={plaque.id}
-                plaque={plaque}
-                onBow={onBow}
-                onSelect={onSelectPlaque}
-                windSwinging={windSwinging}
-                compact={compactView}
-                index={idx}
-              />
-            ))}
+        {plaques.length > 0 ? (
+          <>
+            <div
+              className={`grid ${
+                compactView
+                  ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-y-7 sm:gap-y-10 gap-x-2.5 sm:gap-x-4'
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-y-8 sm:gap-y-12 gap-x-5 sm:gap-x-6'
+              } justify-items-center pt-1 pb-6`}
+            >
+              {plaques.map((plaque, idx) => (
+                <EmaCard
+                  key={plaque.id}
+                  plaque={plaque}
+                  onBow={onBow}
+                  onSelect={onSelectPlaque}
+                  windSwinging={windSwinging}
+                  compact={compactView}
+                  index={idx % 24}
+                />
+              ))}
 
-            {/* Interactive "Hang Next Plaque" Open Hook on the Beam */}
-            <div className="w-full flex flex-col items-center">
-              <div className="w-3.5 h-3.5 rounded-full bg-amber-800/70 border border-amber-600/50 -mb-1" />
-              <div className="w-0.5 h-8 bg-amber-800/40" />
-              <button
-                type="button"
-                onClick={() => {
-                  shrineAudio.playWoodClack();
-                  onOpenHangModal();
-                }}
-                className="group relative w-full max-w-[310px] sm:w-80 min-h-[235px] rounded-b-lg bg-zinc-900/35 hover:bg-amber-950/25 p-6 pt-8 flex flex-col items-center justify-center text-center transition-all duration-300 text-amber-700/60 hover:text-amber-400/90 shrine-open-hook-card"
-                style={{
-                  clipPath: 'polygon(50% 0%, 100% 13%, 100% 100%, 0% 100%, 0% 13%)'
-                }}
-              >
-                {/* 5-Sided Pentagonal Dashed SVG Outline */}
-                <svg
-                  className="pointer-events-none absolute inset-0 w-full h-full"
-                  viewBox="0 0 100 100"
-                  preserveAspectRatio="none"
+              {/* Interactive "Hang Next Plaque" Open Hook on the Beam */}
+              <div className="w-full flex flex-col items-center">
+                <div className="w-3.5 h-3.5 rounded-full bg-amber-800/70 border border-amber-600/50 -mb-1" />
+                <div className="w-0.5 h-8 bg-amber-800/40" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    shrineAudio.playWoodClack();
+                    onOpenHangModal();
+                  }}
+                  className="group relative w-full max-w-[310px] sm:w-80 min-h-[235px] rounded-b-lg bg-zinc-900/35 hover:bg-amber-950/25 p-6 pt-8 flex flex-col items-center justify-center text-center transition-all duration-300 text-amber-700/60 hover:text-amber-400/90 shrine-open-hook-card"
+                  style={{
+                    clipPath: 'polygon(50% 0%, 100% 13%, 100% 100%, 0% 100%, 0% 13%)'
+                  }}
                 >
-                  <polygon
-                    points="50,1 99,13.5 99,99 1,99 1,13.5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeDasharray="6 4"
-                    vectorEffect="non-scaling-stroke"
-                  />
-                </svg>
+                  {/* 5-Sided Pentagonal Dashed SVG Outline */}
+                  <svg
+                    className="pointer-events-none absolute inset-0 w-full h-full"
+                    viewBox="0 0 100 100"
+                    preserveAspectRatio="none"
+                  >
+                    <polygon
+                      points="50,1 99,13.5 99,99 1,99 1,13.5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeDasharray="6 4"
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
 
-                <div className="w-11 h-11 rounded-2xl bg-amber-950/60 border border-amber-700/50 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform mb-3">
-                  <EmaPlaqueIcon size={22} />
-                </div>
-                <span className="font-serif font-bold text-amber-200 text-base">
-                  {t.rack.openHookTitle(nextCoord)}
-                </span>
-                <span className="text-xs text-zinc-400 mt-1 max-w-[200px]">
-                  {t.rack.openHookDesc}
-                </span>
-              </button>
+                  <div className="w-11 h-11 rounded-2xl bg-amber-950/60 border border-amber-700/50 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform mb-3">
+                    <EmaPlaqueIcon size={22} />
+                  </div>
+                  <span className="font-serif font-bold text-amber-200 text-base">
+                    {t.rack.openHookTitle(nextCoord)}
+                  </span>
+                  <span className="text-xs text-zinc-400 mt-1 max-w-[200px]">
+                    {t.rack.openHookDesc}
+                  </span>
+                </button>
+              </div>
             </div>
-          </div>
+
+            {/* Keyset Pagination / Infinite Scroll Sentinel for 100k+ Scale */}
+            {hasMore && (
+              <div
+                ref={loadMoreSentinelRef}
+                className="pt-2 pb-6 flex flex-col items-center justify-center gap-2"
+              >
+                <button
+                  type="button"
+                  disabled={isLoadingMore}
+                  onClick={() => {
+                    shrineAudio.playWoodClack();
+                    onLoadMore();
+                  }}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-amber-700/40 text-amber-200 text-xs font-mono shadow-md transition-all disabled:opacity-50"
+                >
+                  <ToriiIcon size={14} color="#f59e0b" />
+                  <span>
+                    {isLoadingMore
+                      ? language === 'ja'
+                        ? '絵馬を読み込み中...'
+                        : 'Loading more plaques...'
+                      : language === 'ja'
+                      ? 'さらに絵馬を表示する'
+                      : 'Load More Plaques'}
+                  </span>
+                </button>
+                <span className="text-[11px] font-mono text-zinc-500">
+                  {language === 'ja'
+                    ? `${plaques.length.toLocaleString()} / ${totalPlaques.toLocaleString()} 枚を表示中`
+                    : `Showing ${plaques.length.toLocaleString()} of ${totalPlaques.toLocaleString()} plaques`}
+                </span>
+              </div>
+            )}
+          </>
         ) : (
           /* Inviting Empty Rack State with Interactive Hook #1 */
           <div className="py-8 sm:py-10 flex flex-col items-center">
@@ -516,7 +566,11 @@ export const EmaWall: React.FC<EmaWallProps> = ({
                     <EmaPlaqueIcon size={28} color="#f59e0b" />
                   </div>
                   <h3 className="text-lg sm:text-xl font-serif font-bold text-amber-100">
-                    {searchQuery
+                    {isLoading
+                      ? language === 'ja'
+                        ? '境内の絵馬を読み込み中...'
+                        : 'Loading shrine wall...'
+                      : searchQuery
                       ? t.rack.emptyNoMatchTitle(searchQuery)
                       : selectedCategory !== 'all'
                       ? t.rack.emptyNoCatTitle(currentCategoryLabel)

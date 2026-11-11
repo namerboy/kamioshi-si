@@ -48,6 +48,22 @@ export interface WallStats {
   activePilgrims: number;
 }
 
+export interface ShrineStats {
+  totalPlaques: number;
+  totalBells: number;
+  uniqueLocations: number;
+  maxCoordinate: number;
+  categoryCounts: Record<string, number>;
+}
+
+export interface ShrineTag {
+  tagNorm: string;
+  displayName: string;
+  category: PlaqueCategory;
+  plaqueCount: number;
+  bowTotal: number;
+}
+
 export type HarmCategory =
   | 'safe'
   | 'harassment_defamation'

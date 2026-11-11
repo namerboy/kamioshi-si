@@ -40,21 +40,33 @@
   }
 }
 
-/* Native <dialog> Top-Layer Scroll Containment & Entry/Exit Animations */
+/* Mobile-First Native <dialog> Bottom Sheet & Desktop Centered Modal */
 dialog {
-  margin: auto;
+  margin-block-start: auto;
+  margin-block-end: 0;
+  margin-inline: 0;
   padding: 0;
   border: none;
   background: transparent;
   color: inherit;
-  inline-size: min(calc(100% - 1.25rem), 52rem);
-  max-block-size: 92dvh;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  max-block-size: 94dvh;
   opacity: 0;
-  transform: scale(0.96) translateY(8px);
+  transform: translateY(20px);
   transition-property: opacity, transform, display, overlay;
   transition-duration: 0.24s;
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   transition-behavior: allow-discrete;
+}
+
+@media (min-width: 640px) {
+  dialog {
+    margin: auto;
+    inline-size: min(calc(100% - 1.5rem), 52rem);
+    max-block-size: 90dvh;
+    transform: scale(0.96) translateY(8px);
+  }
 }
 
 dialog:modal {
@@ -74,11 +86,20 @@ dialog::backdrop {
 
 :is(dialog[open]):where(:not([data-closing])) {
   opacity: 1;
-  transform: scale(1) translateY(0);
+  transform: translateY(0);
 
   @starting-style {
     opacity: 0;
-    transform: scale(0.96) translateY(8px);
+    transform: translateY(20px);
+  }
+
+  @media (min-width: 640px) {
+    transform: scale(1) translateY(0);
+
+    @starting-style {
+      opacity: 0;
+      transform: scale(0.96) translateY(8px);
+    }
   }
 
   &::backdrop {
@@ -104,6 +125,12 @@ dialog::backdrop {
     @starting-style {
       transform: none;
     }
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }
 
@@ -161,15 +188,102 @@ body {
 .animate-ema-swing {
   transform-origin: 50% 4px;
   animation: emaSwing 1.05s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 }
 
 .animate-shide {
   transform-origin: top center;
   animation: shideSway 5s ease-in-out infinite;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 }
 
 .animate-float-spark {
   animation: floatSpark 0.95s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 0.2s;
+  }
+}
+
+/* =========================================================================
+   Container-Driven Responsive Plaque Sizing & Fluid Scaling
+   ========================================================================= */
+.ema-card-container {
+  container-type: inline-size;
+  container-name: ema-card;
+}
+
+/* Safe viewport-relative fallback for older browsers without cqi support */
+.ema-card-title {
+  font-size: clamp(1rem, 4.2vw, 1.5rem);
+}
+
+@supports (font-size: 1cqi) {
+  .ema-card-title {
+    /* Fluid scaling bound to plaque container width (max <= 2.5x min) */
+    font-size: clamp(1rem, 6.8cqi, 1.5rem);
+  }
+}
+
+/* Multi-line truncation triad with unprefixed line-clamp & overflow: clip */
+.ema-card-message {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  line-clamp: 3;
+  overflow: clip;
+}
+
+/* Media query fallback for compact cards on narrow viewports */
+@media (max-width: 480px) {
+  .ema-card-keepsake-hint {
+    display: none;
+  }
+}
+
+@supports (container-type: inline-size) {
+  @media (max-width: 480px) {
+    .ema-card-keepsake-hint {
+      display: inline;
+    }
+  }
+
+  /* When plaque container is compact (e.g. 2-column mobile grid < 235px) */
+  @container ema-card (max-width: 235px) {
+    .ema-card-face {
+      padding: 0.65rem;
+      padding-block-start: 0.5rem;
+    }
+
+    .ema-card-keepsake-hint,
+    .ema-card-time,
+    .ema-card-share-label {
+      display: none;
+    }
+
+    .ema-card-message {
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      font-size: 0.72rem;
+    }
+  }
+}
+
+/* Accessible Focus Rings & Coarse-Pointer Touch Targets */
+:where(a:any-link, button, input, select, textarea):focus-visible {
+  outline: 2px solid #f59e0b;
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  button,
+  a:any-link {
+    min-block-size: 32px;
+    min-inline-size: 32px;
+  }
 }
 
 /* Utility to hide scrollbars cleanly on horizontal chip rails */
@@ -318,6 +432,22 @@ html.theme-sakura .header-btn:hover {
   background-color: #fdf2f4 !important;
   color: #be123c !important;
   border-color: rgba(244, 114, 142, 0.5) !important;
+}
+
+/* Mobile Thumb-Zone Bottom Dock in Sakura mode */
+html.theme-sakura .mobile-bottom-dock {
+  background-color: rgba(255, 252, 248, 0.94) !important;
+  border-top-color: rgba(244, 163, 179, 0.45) !important;
+  box-shadow: 0 -6px 24px rgba(190, 110, 125, 0.14) !important;
+}
+
+html.theme-sakura .mobile-dock-item {
+  color: #6e5547 !important;
+}
+
+html.theme-sakura .mobile-dock-item:hover,
+html.theme-sakura .mobile-dock-item:active {
+  color: #be123c !important;
 }
 
 /* Hero Pavilion in Sakura mode */

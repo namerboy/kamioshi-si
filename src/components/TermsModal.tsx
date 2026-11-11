@@ -127,9 +127,14 @@ export const TermsModal: React.FC<TermsModalProps> = ({
       {...({ closedby: 'any' } as React.DialogHTMLAttributes<HTMLDialogElement>)}
       className="w-full max-w-2xl bg-transparent p-0"
     >
-      <div className="flex flex-col w-full max-h-[90dvh] sm:max-h-[88dvh] rounded-2xl bg-zinc-900 border border-amber-900/40 shadow-2xl text-zinc-100 overflow-hidden">
+      <div className="flex flex-col w-full max-h-[92dvh] sm:max-h-[88dvh] rounded-t-3xl sm:rounded-2xl bg-zinc-900 border border-amber-900/40 shadow-2xl text-zinc-100 overflow-hidden">
+        {/* Mobile Bottom-Sheet Grab Handle Indicator */}
+        <div className="sm:hidden shrink-0 flex justify-center pt-2 pb-0.5 bg-zinc-950/95">
+          <div className="w-10 h-1 rounded-full bg-zinc-700/80" />
+        </div>
+
         {/* Header */}
-        <div className="shrink-0 flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-zinc-800 bg-zinc-950/95">
+        <div className="shrink-0 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-3.5 border-b border-zinc-800 bg-zinc-950/95">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-amber-950/50 border border-amber-700/40 flex items-center justify-center text-amber-400 shrink-0">
               <CharterScrollIcon size={18} />
@@ -296,7 +301,7 @@ export const TermsModal: React.FC<TermsModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 px-4 sm:px-6 py-3.5 border-t border-zinc-800 bg-zinc-950/95 flex items-center justify-between">
+        <div className="shrink-0 px-4 sm:px-6 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:pb-3.5 border-t border-zinc-800 bg-zinc-950/95 flex items-center justify-between">
           <span className="text-[11px] font-mono text-zinc-500">
             {t.termsModal.footerEdition}
           </span>

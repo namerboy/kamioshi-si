@@ -435,10 +435,15 @@ export const HangEmaModal: React.FC<HangEmaModalProps> = ({
     >
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col w-full max-h-[90dvh] sm:max-h-[88dvh] rounded-2xl bg-zinc-900 border border-amber-900/40 shadow-2xl text-zinc-100 overflow-hidden"
+        className="flex flex-col w-full max-h-[92dvh] sm:max-h-[88dvh] rounded-t-3xl sm:rounded-2xl bg-zinc-900 border border-amber-900/40 shadow-2xl text-zinc-100 overflow-hidden"
       >
+        {/* Mobile Bottom-Sheet Grab Handle Indicator */}
+        <div className="sm:hidden shrink-0 flex justify-center pt-2 pb-0.5 bg-zinc-950/95">
+          <div className="w-10 h-1 rounded-full bg-zinc-700/80" />
+        </div>
+
         {/* 1. Pinned Modal Header */}
-        <div className="shrink-0 flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 border-b border-zinc-800 bg-zinc-950/95">
+        <div className="shrink-0 flex items-center justify-between gap-2 px-4 sm:px-6 py-3 sm:py-3.5 border-b border-zinc-800 bg-zinc-950/95">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-amber-950/50 border border-amber-700/40 flex items-center justify-center shrink-0">
               <ToriiIcon size={18} color="#f59e0b" />
@@ -457,7 +462,7 @@ export const HangEmaModal: React.FC<HangEmaModalProps> = ({
             <button
               type="button"
               onClick={handleCycleInspiration}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-950/50 hover:bg-amber-900/60 border border-amber-700/40 text-amber-300 text-xs font-medium transition-colors"
+              className="inline-flex items-center gap-1.5 min-h-[34px] px-2.5 py-1.5 rounded-lg bg-amber-950/50 hover:bg-amber-900/60 border border-amber-700/40 text-amber-300 text-xs font-medium transition-colors"
               title={t.hangModal.exampleIdeaBtn}
             >
               <SacredSparkleIcon size={12} color="#fcd34d" />
@@ -472,6 +477,55 @@ export const HangEmaModal: React.FC<HangEmaModalProps> = ({
             >
               <CloseSealIcon size={16} />
             </button>
+          </div>
+        </div>
+
+        {/* Mobile-First Pinned Live Carved Preview Bar (Always visible on mobile/tablet < lg while typing) */}
+        <div className="lg:hidden shrink-0 px-3.5 py-2.5 border-b border-zinc-800/90 bg-zinc-950/90">
+          <div
+            className={`relative rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3 overflow-hidden shadow-md ${theme.textureClass}`}
+            style={{
+              backgroundColor: theme.edgeColor,
+              color: theme.textColor,
+              border: `1.5px solid ${theme.borderColor}`
+            }}
+          >
+            {/* Left: Silk Cord Knot Indicator + Live Oshi & Message */}
+            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+              <div className="flex flex-col items-center shrink-0">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 border border-amber-200" />
+                <div
+                  className="w-3 h-3 -mt-0.5 rounded-sm rotate-45 border shadow-sm"
+                  style={{ backgroundColor: cord.main, borderColor: cord.highlight }}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5 text-[10px] font-mono opacity-85">
+                  <span className="font-bold">#{nextCoordinate.toLocaleString()}</span>
+                  <span>•</span>
+                  <span className="truncate">{selectedCategoryLabel}</span>
+                </div>
+                <div
+                  className="font-serif font-bold text-sm truncate leading-snug"
+                  style={{ color: theme.inkColor }}
+                >
+                  {kamioshiName || t.hangModal.previewDefaultOshi}
+                </div>
+                <div className="text-[11px] italic truncate opacity-90">
+                  “{message || t.hangModal.previewDefaultMsg}”
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Live Vermilion Hanko Stamp */}
+            <div
+              className="ema-hanko-stamp w-8 h-8 shrink-0 rounded-[4px] p-[1.5px] flex items-center justify-center shadow-md"
+              style={{ backgroundColor: theme.stampBg, border: `1.5px solid ${theme.stampBorder}` }}
+            >
+              <div className="w-full h-full border border-white/35 rounded-[2px] flex items-center justify-center text-xs font-serif text-white font-bold">
+                {stamp}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -836,7 +890,7 @@ export const HangEmaModal: React.FC<HangEmaModalProps> = ({
         </div>
 
         {/* 3. Pinned Modal Footer with Terms & Submit CTA */}
-        <div className="shrink-0 px-4 sm:px-6 py-3.5 border-t border-zinc-800 bg-zinc-950/95 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="shrink-0 px-4 sm:px-6 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:pb-3.5 border-t border-zinc-800 bg-zinc-950/95 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <label className="flex items-start sm:items-center gap-2.5 text-xs text-zinc-400 cursor-pointer select-none">
             <input
               type="checkbox"

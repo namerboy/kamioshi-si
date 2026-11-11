@@ -7,7 +7,6 @@ import { EmaWall } from './components/EmaWall';
 import { HangEmaModal } from './components/HangEmaModal';
 import { SouvenirModal } from './components/SouvenirModal';
 import { TermsModal } from './components/TermsModal';
-import { OmikujiModal } from './components/OmikujiModal';
 import { LanguageProvider } from './i18n/LanguageContext';
 import { ThemeProvider } from './theme/ThemeContext';
 import {
@@ -43,16 +42,54 @@ export const App: React.FC = () => {
   const [selectedPlaque, setSelectedPlaque] = useState<EmaPlaque | null>(null);
   const [isHangModalOpen, setIsHangModalOpen] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
-  const [isOmikujiModalOpen, setIsOmikujiModalOpen] = useState(false);
   const [initialOshiName, setInitialOshiName] = useState<string>('');
 
   // Shared filter state so Header Home button & EmaWall stay in sync
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // Subtle swing when hanging a new plaque
+  // Subtle swing when hanging a new plaque or triggering a shrine breeze
   const [windSwinging, setWindSwinging] = useState(false);
   const windTimeoutRef = useRef<number | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const triggerShrineBreeze = () => {
+    setWindSwinging(true);
+    window.dispatchEvent(new CustomEvent('shrine-breeze'));
+    if (windTimeoutRef.current) {
+      window.clearTimeout(windTimeoutRef.current);
+    }
+    windTimeoutRef.current = window.setTimeout(() => {
+      setWindSwinging(false);
+    }, 2200);
+  };
+
+  const handleFocusSearch = () => {
+    if (searchInputRef.current) {
+      searchInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => {
+        searchInputRef.current?.focus({ preventScroll: true });
+      }, 220);
+    }
+  };
+
+  // Live cross-tab synchronization via storage event
+  useEffect(() => {
+    const handleStorageSync = (e: StorageEvent) => {
+      if (e.key === LOCAL_STORAGE_KEY && e.newValue) {
+        try {
+          const sanitized = sanitizeStoredPlaques(JSON.parse(e.newValue));
+          if (sanitized) setPlaques(sanitized);
+        } catch {
+          // ignore malformed cross-tab data
+        }
+      } else if (e.key === LOCAL_STORAGE_KEY && e.newValue === null) {
+        setPlaques([]);
+      }
+    };
+    window.addEventListener('storage', handleStorageSync);
+    return () => window.removeEventListener('storage', handleStorageSync);
+  }, []);
 
   // Visible plaques filtered through the Bottled AI Guardian & user's local hidden list
   const visiblePlaques = useMemo(() => {
@@ -147,13 +184,7 @@ export const App: React.FC = () => {
       return updated;
     });
 
-    setWindSwinging(true);
-    if (windTimeoutRef.current) {
-      window.clearTimeout(windTimeoutRef.current);
-    }
-    windTimeoutRef.current = window.setTimeout(() => {
-      setWindSwinging(false);
-    }, 2200);
+    triggerShrineBreeze();
 
     setSelectedPlaque(newPlaque);
   };
@@ -208,12 +239,12 @@ export const App: React.FC = () => {
         {/* 0. Blender-Rendered 3D Falling Pink Sakura Petals Background */}
         <CourtyardCanvas />
 
-        {/* 1. Header Navigation */}
+        {/* 1. Header Navigation & Mobile Thumb-Zone Bottom Dock */}
         <Header
           onOpenHangModal={() => openHangModal('')}
           onOpenTermsModal={() => setIsTermsModalOpen(true)}
-          onOpenOmikujiModal={() => setIsOmikujiModalOpen(true)}
           onResetHome={handleResetHome}
+          onFocusSearch={handleFocusSearch}
           totalVows={visiblePlaques.length}
         />
 
@@ -226,11 +257,12 @@ export const App: React.FC = () => {
             setSearchQuery={setSearchQuery}
             selectedCategory={selectedCategory}
             setSelectedCategory={setSelectedCategory}
+            searchInputRef={searchInputRef}
+            onTriggerBreeze={triggerShrineBreeze}
             onBow={handleBow}
             onSelectPlaque={(plaque) => setSelectedPlaque(plaque)}
             onOpenHangModal={(prefill) => openHangModal(prefill || '')}
             onOpenTermsModal={() => setIsTermsModalOpen(true)}
-            onOpenOmikujiModal={() => setIsOmikujiModalOpen(true)}
           />
         </main>
 
@@ -254,14 +286,7 @@ export const App: React.FC = () => {
           onReport={handleReportPlaque}
         />
 
-        {/* 5. Shrine Omikuji & Goshuin Blessing Modal */}
-        <OmikujiModal
-          isOpen={isOmikujiModalOpen}
-          onClose={() => setIsOmikujiModalOpen(false)}
-          onOpenHangModal={() => openHangModal('')}
-        />
-
-        {/* 6. Terms, Disclaimers & AI Safety Charter Modal */}
+        {/* 5. Terms, Disclaimers & AI Safety Charter Modal */}
         <TermsModal
           isOpen={isTermsModalOpen}
           onClose={() => setIsTermsModalOpen(false)}

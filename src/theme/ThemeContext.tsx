@@ -36,7 +36,18 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const toggleTheme = () => {
-    setTheme(theme === 'midnight' ? 'sakura' : 'midnight');
+    const nextTheme: ShrineTheme = theme === 'midnight' ? 'sakura' : 'midnight';
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (typeof document !== 'undefined' && 'startViewTransition' in document && !prefersReducedMotion) {
+      (document as Document & { startViewTransition: (cb: () => void) => void }).startViewTransition(() => {
+        setTheme(nextTheme);
+      });
+    } else {
+      setTheme(nextTheme);
+    }
   };
 
   useEffect(() => {
@@ -47,6 +58,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         root.classList.add('theme-sakura');
       } else {
         root.classList.remove('theme-sakura');
+      }
+      const themeMeta = document.querySelector('meta[name="theme-color"]');
+      if (themeMeta) {
+        themeMeta.setAttribute('content', theme === 'sakura' ? '#faf5ee' : '#0c0a09');
       }
     }
   }, [theme]);

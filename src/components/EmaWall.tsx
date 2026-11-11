@@ -20,7 +20,8 @@ interface EmaWallProps {
   onSelectPlaque: (plaque: EmaPlaque) => void;
   onOpenHangModal: (prefillName?: string) => void;
   onOpenTermsModal: () => void;
-  onOpenOmikujiModal?: () => void;
+  onTriggerBreeze?: () => void;
+  searchInputRef?: React.RefObject<HTMLInputElement>;
   windSwinging: boolean;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
@@ -28,13 +29,40 @@ interface EmaWallProps {
   setSelectedCategory: (c: string) => void;
 }
 
+const runViewTransition = (updateFn: () => void, focusElement?: HTMLElement | null) => {
+  const prefersReducedMotion =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (typeof document === 'undefined' || !('startViewTransition' in document) || prefersReducedMotion) {
+    updateFn();
+    focusElement?.focus({ preventScroll: true });
+    return;
+  }
+
+  const transition = (
+    document as Document & {
+      startViewTransition: (cb: () => void) => { finished: Promise<void> };
+    }
+  ).startViewTransition(() => {
+    updateFn();
+  });
+
+  if (focusElement) {
+    transition.finished.finally(() => {
+      focusElement.focus({ preventScroll: true });
+    });
+  }
+};
+
 export const EmaWall: React.FC<EmaWallProps> = ({
   plaques,
   onBow,
   onSelectPlaque,
   onOpenHangModal,
   onOpenTermsModal,
-  onOpenOmikujiModal,
+  onTriggerBreeze,
+  searchInputRef,
   windSwinging,
   searchQuery,
   setSearchQuery,
@@ -44,6 +72,7 @@ export const EmaWall: React.FC<EmaWallProps> = ({
   const { t } = useLanguage();
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'bows'>('newest');
   const [compactView, setCompactView] = useState(false);
+  const rackHeadingRef = React.useRef<HTMLSpanElement | null>(null);
 
   // Unique cities represented
   const uniqueLocations = useMemo(() => {
@@ -176,33 +205,19 @@ export const EmaWall: React.FC<EmaWallProps> = ({
             </div>
           </div>
 
-          {/* Primary & Secondary Hero Action Buttons */}
-          <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 max-w-lg mx-auto">
+          {/* Primary Hero Action Button */}
+          <div className="pt-2 flex items-center justify-center max-w-md mx-auto">
             <button
               type="button"
               onClick={() => {
                 shrineAudio.playWoodClack();
                 onOpenHangModal();
               }}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-8 sm:px-9 py-3.5 rounded-2xl bg-gradient-to-r from-amber-600 via-red-600 to-red-700 hover:from-amber-500 hover:to-red-500 text-white font-serif font-bold text-sm sm:text-base shadow-xl shadow-red-950/60 border border-amber-400/30 transition-all hover:-translate-y-0.5 active:scale-95"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-9 py-3.5 rounded-2xl bg-gradient-to-r from-amber-600 via-red-600 to-red-700 hover:from-amber-500 hover:to-red-500 text-white font-serif font-bold text-sm sm:text-base shadow-xl shadow-red-950/60 border border-amber-400/30 transition-all hover:-translate-y-0.5 active:scale-95"
             >
               <EmaPlaqueIcon size={18} color="#ffffff" />
               <span>{t.hero.hangCta}</span>
             </button>
-
-            {onOpenOmikujiModal && (
-              <button
-                type="button"
-                onClick={() => {
-                  shrineAudio.playWoodClack();
-                  onOpenOmikujiModal();
-                }}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 text-amber-200 font-serif font-semibold text-xs sm:text-sm border border-amber-700/40 shadow-lg transition-all hover:-translate-y-0.5 active:scale-95"
-              >
-                <SacredSparkleIcon size={15} color="#f59e0b" />
-                <span>{t.hero.omikujiCta}</span>
-              </button>
-            )}
           </div>
         </div>
       </section>
@@ -216,6 +231,7 @@ export const EmaWall: React.FC<EmaWallProps> = ({
               <BrushSearchIcon size={16} />
             </div>
             <input
+              ref={searchInputRef}
               type="search"
               name="q"
               value={searchQuery}
@@ -232,7 +248,7 @@ export const EmaWall: React.FC<EmaWallProps> = ({
                 type="button"
                 onClick={() => {
                   shrineAudio.playWoodClack();
-                  setSearchQuery('');
+                  runViewTransition(() => setSearchQuery(''), searchInputRef?.current);
                 }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] text-zinc-300 hover:text-white transition-colors"
               >
@@ -246,11 +262,11 @@ export const EmaWall: React.FC<EmaWallProps> = ({
             <div className="flex items-center gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
                   shrineAudio.playWoodClack();
-                  setSortBy('newest');
+                  runViewTransition(() => setSortBy('newest'), e.currentTarget);
                 }}
-                className={`px-2.5 py-1.5 rounded-lg font-medium transition-all ${
+                className={`min-h-[30px] px-2.5 py-1.5 rounded-lg font-medium transition-all ${
                   sortBy === 'newest'
                     ? 'bg-amber-950/70 text-amber-300 border border-amber-700/50 shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200'
@@ -260,11 +276,11 @@ export const EmaWall: React.FC<EmaWallProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
                   shrineAudio.playWoodClack();
-                  setSortBy('oldest');
+                  runViewTransition(() => setSortBy('oldest'), e.currentTarget);
                 }}
-                className={`px-2.5 py-1.5 rounded-lg font-medium transition-all ${
+                className={`min-h-[30px] px-2.5 py-1.5 rounded-lg font-medium transition-all ${
                   sortBy === 'oldest'
                     ? 'bg-amber-950/70 text-amber-300 border border-amber-700/50 shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200'
@@ -274,11 +290,11 @@ export const EmaWall: React.FC<EmaWallProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
                   shrineAudio.playWoodClack();
-                  setSortBy('bows');
+                  runViewTransition(() => setSortBy('bows'), e.currentTarget);
                 }}
-                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-medium transition-all ${
+                className={`inline-flex items-center gap-1 min-h-[30px] px-2.5 py-1.5 rounded-lg font-medium transition-all ${
                   sortBy === 'bows'
                     ? 'bg-amber-950/70 text-amber-300 border border-amber-700/50 shadow-sm'
                     : 'text-zinc-400 hover:text-zinc-200'
@@ -291,11 +307,12 @@ export const EmaWall: React.FC<EmaWallProps> = ({
 
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
                 shrineAudio.playWoodClack();
-                setCompactView((v) => !v);
+                runViewTransition(() => setCompactView((v) => !v), e.currentTarget);
               }}
-              className={`px-3 py-2 rounded-xl font-mono text-[11px] border transition-colors ${
+              aria-pressed={compactView}
+              className={`min-h-[34px] px-3 py-2 rounded-xl font-mono text-[11px] border transition-colors ${
                 compactView
                   ? 'bg-amber-950/50 text-amber-300 border-amber-700/50'
                   : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border-zinc-800'
@@ -307,8 +324,8 @@ export const EmaWall: React.FC<EmaWallProps> = ({
           </div>
         </div>
 
-        {/* Category Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1">
+        {/* Category Filter Pills (Mobile Horizontal Snap Rail) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none -mx-1 px-1 snap-x snap-proximity overscroll-x-contain">
           {Object.entries(CATEGORY_LABELS).map(([key, meta]) => {
             const isSelected = selectedCategory === key;
             const count = categoryCounts[key] || 0;
@@ -317,11 +334,12 @@ export const EmaWall: React.FC<EmaWallProps> = ({
               <button
                 key={key}
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
                   shrineAudio.playWoodClack();
-                  setSelectedCategory(key);
+                  runViewTransition(() => setSelectedCategory(key), e.currentTarget);
                 }}
-                className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                aria-pressed={isSelected}
+                className={`snap-start shrink-0 inline-flex items-center gap-1.5 min-h-[34px] px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
                   isSelected
                     ? 'bg-amber-500 text-zinc-950 border-amber-400 font-semibold shadow-md'
                     : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
@@ -372,19 +390,22 @@ export const EmaWall: React.FC<EmaWallProps> = ({
       <section className="relative pt-2 sm:pt-4">
         {/* Top Carved Cedar Crossbeam with Ornamental Iron Brackets */}
         <div
-          className="relative w-full h-6 rounded-md shadow-xl flex items-center justify-between px-2 sm:px-3 border-y border-amber-700/50 overflow-hidden shrine-rack-beam"
+          className="relative w-full h-7 rounded-md shadow-xl flex items-center justify-between px-2 sm:px-3 border-y border-amber-700/50 overflow-hidden shrine-rack-beam"
           style={{
             background: 'linear-gradient(180deg, #523015 0%, #381e0b 55%, #241206 100%)'
           }}
         >
-          {/* Left & Right Traditional Black & Gold Iron Fittings (Kazari-kanagu) */}
+          {/* Left Traditional Black & Gold Iron Fitting (Kazari-kanagu) */}
           <div className="w-6 sm:w-8 h-full bg-zinc-900 border-r border-amber-500/40 flex items-center justify-center shrink-0">
             <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] font-mono tracking-widest uppercase text-amber-200/60 select-none truncate px-2">
+          <div className="flex items-center justify-center gap-1.5 text-[10px] font-mono tracking-widest uppercase text-amber-200/70 select-none truncate px-2">
             <ToriiIcon size={12} color="#fbbf24" />
-            <span className="truncate">{t.rack.beamLabel}</span>
+            <span ref={rackHeadingRef} tabIndex={-1} className="truncate outline-none">
+              {t.rack.beamLabel}
+            </span>
           </div>
+          {/* Right Traditional Black & Gold Iron Fitting */}
           <div className="w-6 sm:w-8 h-full bg-zinc-900 border-l border-amber-500/40 flex items-center justify-center shrink-0">
             <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
           </div>
@@ -394,11 +415,11 @@ export const EmaWall: React.FC<EmaWallProps> = ({
           <div
             className={`grid ${
               compactView
-                ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-y-10 gap-x-4'
-                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-y-10 sm:gap-y-12 gap-x-6'
+                ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-y-7 sm:gap-y-10 gap-x-2.5 sm:gap-x-4'
+                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-y-8 sm:gap-y-12 gap-x-5 sm:gap-x-6'
             } justify-items-center pt-1 pb-6`}
           >
-            {filteredPlaques.map((plaque) => (
+            {filteredPlaques.map((plaque, idx) => (
               <EmaCard
                 key={plaque.id}
                 plaque={plaque}
@@ -406,6 +427,7 @@ export const EmaWall: React.FC<EmaWallProps> = ({
                 onSelect={onSelectPlaque}
                 windSwinging={windSwinging}
                 compact={compactView}
+                index={idx}
               />
             ))}
 
@@ -531,8 +553,8 @@ export const EmaWall: React.FC<EmaWallProps> = ({
         )}
       </section>
 
-      {/* 4. Polished Footer with Working Links */}
-      <footer className="pt-8 sm:pt-12 pb-8 border-t border-zinc-800/80 text-xs text-zinc-400">
+      {/* 4. Polished Footer with Working Links (Extra mobile bottom padding for thumb dock) */}
+      <footer className="pt-8 sm:pt-12 pb-24 sm:pb-8 border-t border-zinc-800/80 text-xs text-zinc-400">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <div className="flex items-center justify-center sm:justify-start gap-2.5">
             <ToriiIcon size={18} color="#f59e0b" />
@@ -551,23 +573,6 @@ export const EmaWall: React.FC<EmaWallProps> = ({
               <EmaPlaqueIcon size={13} />
               <span>{t.footer.hangLink}</span>
             </button>
-
-            {onOpenOmikujiModal && (
-              <>
-                <span className="text-zinc-700">•</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    shrineAudio.playWoodClack();
-                    onOpenOmikujiModal();
-                  }}
-                  className="hover:text-amber-300 transition-colors inline-flex items-center gap-1"
-                >
-                  <SacredSparkleIcon size={13} color="#f59e0b" />
-                  <span>{t.footer.omikujiLink}</span>
-                </button>
-              </>
-            )}
 
             <span className="text-zinc-700">•</span>
 

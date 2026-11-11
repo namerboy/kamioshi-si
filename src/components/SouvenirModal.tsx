@@ -456,9 +456,14 @@ export const SouvenirModal: React.FC<SouvenirModalProps> = ({
       {...({ closedby: 'any' } as React.DialogHTMLAttributes<HTMLDialogElement>)}
       className="w-full max-w-xl bg-transparent p-0"
     >
-      <div className="flex flex-col w-full max-h-[90dvh] sm:max-h-[88dvh] rounded-2xl bg-zinc-900 border border-amber-900/40 shadow-2xl text-zinc-100 overflow-hidden">
+      <div className="flex flex-col w-full max-h-[92dvh] sm:max-h-[88dvh] rounded-t-3xl sm:rounded-2xl bg-zinc-900 border border-amber-900/40 shadow-2xl text-zinc-100 overflow-hidden">
+        {/* Mobile Bottom-Sheet Grab Handle Indicator */}
+        <div className="sm:hidden shrink-0 flex justify-center pt-2 pb-0.5 bg-zinc-950/95">
+          <div className="w-10 h-1 rounded-full bg-zinc-700/80" />
+        </div>
+
         {/* Header */}
-        <div className="shrink-0 flex items-center justify-between px-4 sm:px-6 py-3.5 border-b border-zinc-800 bg-zinc-950/95">
+        <div className="shrink-0 flex items-center justify-between px-4 sm:px-6 py-3 sm:py-3.5 border-b border-zinc-800 bg-zinc-950/95">
           <div className="flex items-center gap-2.5 min-w-0">
             <ToriiIcon size={20} color="#f59e0b" />
             <div className="min-w-0">
@@ -592,7 +597,7 @@ export const SouvenirModal: React.FC<SouvenirModalProps> = ({
         </div>
 
         {/* Action Controls Bar */}
-        <div className="shrink-0 p-4 sm:p-5 border-t border-zinc-800 bg-zinc-950/95 space-y-3">
+        <div className="shrink-0 px-4 sm:px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:pb-5 border-t border-zinc-800 bg-zinc-950/95 space-y-3">
           {/* Expandable Report / Quarantine Drawer */}
           {reportingOpen && onReport && (
             <div className="p-3.5 rounded-xl bg-zinc-900 border border-red-800/50 space-y-2.5 text-xs">

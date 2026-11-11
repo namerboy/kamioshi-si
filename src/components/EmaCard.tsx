@@ -12,6 +12,7 @@ interface EmaCardProps {
   onSelect: (plaque: EmaPlaque) => void;
   windSwinging?: boolean;
   compact?: boolean;
+  index?: number;
 }
 
 export interface WoodTheme {
@@ -151,7 +152,8 @@ export const EmaCard: React.FC<EmaCardProps> = ({
   onBow,
   onSelect,
   windSwinging = false,
-  compact = false
+  compact = false,
+  index = 0
 }) => {
   const { t } = useLanguage();
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -166,11 +168,34 @@ export const EmaCard: React.FC<EmaCardProps> = ({
   const theme = getWoodTheme(plaque.woodType);
   const cord = getCordStyle(plaque.cordColor);
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  // Dynamic relative timestamp calculation
+  const { relativeTimeStr, isFreshlyHung } = React.useMemo(() => {
+    const createdMs = new Date(plaque.createdAt).getTime();
+    if (Number.isNaN(createdMs)) {
+      return { relativeTimeStr: '', isFreshlyHung: false };
+    }
+    const diffSec = Math.max(0, Math.floor((Date.now() - createdMs) / 1000));
+    if (diffSec < 90) {
+      return { relativeTimeStr: t.card.justNow, isFreshlyHung: true };
+    }
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) {
+      return { relativeTimeStr: t.card.minutesAgo(diffMin), isFreshlyHung: diffMin <= 5 };
+    }
+    const diffHours = Math.floor(diffMin / 60);
+    if (diffHours < 24) {
+      return { relativeTimeStr: t.card.hoursAgo(diffHours), isFreshlyHung: false };
+    }
+    const diffDays = Math.floor(diffHours / 24);
+    return { relativeTimeStr: t.card.daysAgo(diffDays), isFreshlyHung: false };
+  }, [plaque.createdAt, t]);
+
+  const updateTiltFromPointer = (clientX: number, clientY: number) => {
     if (!cardRef.current) return;
     const rect = cardRef.current.getBoundingClientRect();
-    const px = (e.clientX - rect.left) / rect.width;
-    const py = (e.clientY - rect.top) / rect.height;
+    if (rect.width === 0 || rect.height === 0) return;
+    const px = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    const py = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
     const ry = (px - 0.5) * 11;
     const rx = (0.5 - py) * 9;
     setTilt({
@@ -180,6 +205,14 @@ export const EmaCard: React.FC<EmaCardProps> = ({
       sheenY: Math.round(py * 100),
       active: true
     });
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    updateTiltFromPointer(e.clientX, e.clientY);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    updateTiltFromPointer(e.clientX, e.clientY);
   };
 
   const handlePointerLeave = () => {
@@ -212,236 +245,262 @@ export const EmaCard: React.FC<EmaCardProps> = ({
     setTimeout(() => setCopiedLink(false), 1800);
   };
 
+  const isActivelySwinging = isSwinging || windSwinging;
+  const safeTransitionId = plaque.id.replace(/[^a-zA-Z0-9_-]/g, '');
+
   return (
-    <article
-      ref={cardRef}
-      onClick={() => {
-        shrineAudio.playWoodClack();
-        onSelect(plaque);
-      }}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerLeave}
-      className={`group relative w-full flex flex-col items-center cursor-pointer select-none ${
-        isSwinging || windSwinging ? 'animate-ema-swing' : ''
-      }`}
-      style={{ perspective: '1100px' }}
-    >
-      {/* Floating +1 Chime Spark on Bell Ring */}
-      {hasBowedRecently && (
-        <div className="pointer-events-none absolute -top-3 z-30 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500 text-zinc-950 font-mono font-bold text-xs shadow-lg animate-float-spark">
-          <SuzuBellIcon size={12} color="#09090b" />
-          <span>+1</span>
-        </div>
-      )}
-
-      {/* 1. Brass Peg & Braided Silk Cord (組紐) */}
-      <div className="relative flex flex-col items-center -mb-3 z-20 pointer-events-none">
-        {/* Brass Hook on Beam */}
-        <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-b from-amber-300 via-amber-600 to-amber-900 border border-amber-200/60 shadow-md" />
-        {/* Upper Braided Cord */}
-        <div
-          className="w-1 h-6 shadow-sm"
-          style={{
-            background: `repeating-linear-gradient(45deg, ${cord.main}, ${cord.main} 2px, ${cord.knot} 2px, ${cord.knot} 4px)`
-          }}
-        />
-        {/* Traditional Agemaki Shrine Knot */}
-        <div className="relative flex items-center justify-center -my-1">
-          <div
-            className="w-4 h-2.5 rounded-full border shadow-sm"
-            style={{ backgroundColor: cord.knot, borderColor: cord.highlight }}
-          />
-          <div
-            className="absolute w-2.5 h-3 rounded-sm rotate-45 border"
-            style={{ backgroundColor: cord.main, borderColor: cord.highlight }}
-          />
-        </div>
-        {/* Lower Cord Tail entering Grommet */}
-        <div className="w-1 h-3.5" style={{ backgroundColor: cord.main }} />
-      </div>
-
-      {/* 2. 3D Tilting Wooden Ema Tablet */}
-      <div
-        className="relative w-full flex justify-center transition-transform duration-200 ease-out ema-pentagon-shadow"
+    <div className="ema-card-container w-full flex justify-center">
+      <article
+        ref={cardRef}
+        onClick={() => {
+          shrineAudio.playWoodClack();
+          onSelect(plaque);
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerLeave}
+        onPointerCancel={handlePointerLeave}
+        onPointerLeave={handlePointerLeave}
+        className={`group relative w-full flex flex-col items-center cursor-pointer select-none ${
+          isActivelySwinging ? 'animate-ema-swing' : ''
+        }`}
         style={{
-          transform: tilt.active
-            ? `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translateY(-3px)`
-            : 'rotateX(0deg) rotateY(0deg) translateY(0px)',
-          transformStyle: 'preserve-3d'
+          perspective: '1100px',
+          animationDelay: windSwinging && !isSwinging ? `${(index % 6) * 75}ms` : '0ms',
+          viewTransitionName: isActivelySwinging ? undefined : `ema-${safeTransitionId}`
         }}
       >
-        {/* 3D Wood Bottom Thickness Lip */}
+        {/* Floating +1 Chime Spark on Bell Ring */}
+        {hasBowedRecently && (
+          <div className="pointer-events-none absolute -top-3 z-30 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-500 text-zinc-950 font-mono font-bold text-xs shadow-lg animate-float-spark">
+            <SuzuBellIcon size={12} color="#09090b" />
+            <span>+1</span>
+          </div>
+        )}
+
+        {/* 1. Brass Peg & Braided Silk Cord (組紐) */}
+        <div className="relative flex flex-col items-center -mb-3 z-20 pointer-events-none">
+          {/* Brass Hook on Beam */}
+          <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-b from-amber-300 via-amber-600 to-amber-900 border border-amber-200/60 shadow-md" />
+          {/* Upper Braided Cord */}
+          <div
+            className="w-1 h-6 shadow-sm"
+            style={{
+              background: `repeating-linear-gradient(45deg, ${cord.main}, ${cord.main} 2px, ${cord.knot} 2px, ${cord.knot} 4px)`
+            }}
+          />
+          {/* Traditional Agemaki Shrine Knot */}
+          <div className="relative flex items-center justify-center -my-1">
+            <div
+              className="w-4 h-2.5 rounded-full border shadow-sm"
+              style={{ backgroundColor: cord.knot, borderColor: cord.highlight }}
+            />
+            <div
+              className="absolute w-2.5 h-3 rounded-sm rotate-45 border"
+              style={{ backgroundColor: cord.main, borderColor: cord.highlight }}
+            />
+          </div>
+          {/* Lower Cord Tail entering Grommet */}
+          <div className="w-1 h-3.5" style={{ backgroundColor: cord.main }} />
+        </div>
+
+        {/* 2. 3D Tilting Wooden Ema Tablet */}
         <div
-          className={`${compact ? 'w-full max-w-[260px]' : 'w-full max-w-[310px] sm:w-80'} rounded-b-lg`}
+          className="relative w-full flex justify-center transition-transform duration-200 ease-out ema-pentagon-shadow"
           style={{
-            backgroundColor: theme.edgeColor,
-            paddingBottom: '6px',
-            clipPath: 'polygon(50% 0%, 100% 13%, 100% 100%, 0% 100%, 0% 13%)'
+            transform: tilt.active
+              ? `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg) translateY(-3px)`
+              : 'rotateX(0deg) rotateY(0deg) translateY(0px)',
+            transformStyle: 'preserve-3d'
           }}
         >
-          {/* Main Pentagonal Plaque Face with Blender-baked 2.5D wood & bevel relief */}
+          {/* 3D Wood Bottom Thickness Lip */}
           <div
-            className={`relative w-full rounded-b-md overflow-hidden p-4 pt-3 flex flex-col justify-between ${theme.textureClass}`}
+            className={`${compact ? 'w-full max-w-[270px]' : 'w-full max-w-[330px] sm:w-80'} rounded-b-lg`}
             style={{
               backgroundColor: theme.edgeColor,
-              color: theme.textColor,
-              minHeight: compact ? '210px' : '246px',
+              paddingBottom: '6px',
               clipPath: 'polygon(50% 0%, 100% 13%, 100% 100%, 0% 100%, 0% 13%)'
             }}
           >
-            {/* Full 5-Sided Pentagonal SVG Border */}
-            <svg
-              className="pointer-events-none absolute inset-0 w-full h-full z-20"
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-            >
-              <polygon
-                points="50,0.6 99.4,13.2 99.4,99.4 0.6,99.4 0.6,13.2"
-                fill="none"
-                stroke={theme.borderColor}
-                strokeWidth="1.5"
-                vectorEffect="non-scaling-stroke"
-              />
-            </svg>
-
-            {/* Interactive Specular Sunlight Sheen (scoped inside isolation: isolate) */}
+            {/* Main Pentagonal Plaque Face with Blender-baked 2.5D wood & bevel relief */}
             <div
-              className="pointer-events-none absolute inset-0 transition-opacity duration-300 mix-blend-soft-light"
+              className={`ema-card-face relative w-full rounded-b-md overflow-hidden p-4 pt-3 flex flex-col justify-between ${theme.textureClass}`}
               style={{
-                opacity: tilt.active ? 0.45 : 0,
-                background: `radial-gradient(circle at ${tilt.sheenX}% ${tilt.sheenY}%, rgba(255, 250, 220, 0.72) 0%, transparent 62%)`
+                backgroundColor: theme.edgeColor,
+                color: theme.textColor,
+                minHeight: compact ? '200px' : '244px',
+                clipPath: 'polygon(50% 0%, 100% 13%, 100% 100%, 0% 100%, 0% 13%)'
               }}
-            />
-
-            {/* Brass Grommet Eyelet Hole */}
-            <div className="relative z-10 flex justify-center items-center pt-1.5 mb-1.5">
-              <div className="w-4 h-4 rounded-full bg-gradient-to-br from-amber-300 via-amber-700 to-amber-950 p-0.5 shadow-md flex items-center justify-center">
-                <div className="w-full h-full rounded-full bg-zinc-950 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cord.main }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Top Meta Row: Coordinate Number & Category Pill */}
-            <div className="relative z-10 flex items-center justify-between gap-2 px-1 text-[11px] font-mono tracking-wider mb-1.5">
-              <span
-                className="font-bold opacity-85"
-                style={{ color: theme.mutedColor }}
-              >
-                #{plaque.coordinate.toLocaleString()}
-              </span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium border shadow-sm ${categoryMeta.badgeClass}`}>
-                {categoryMeta.renderIcon({ size: 12 })}
-                <span>{t.categories[plaque.category] || categoryMeta.label}</span>
-              </span>
-            </div>
-
-            {/* Center: Oshi Name in Bold Calligraphic Serif */}
-            <div className="relative z-10 my-1 text-center px-2">
-              <h3
-                className="text-xl sm:text-2xl font-bold tracking-tight font-serif leading-tight break-words"
-                style={{
-                  color: theme.inkColor,
-                  textShadow: theme.isLight ? '0 1px 0 rgba(255,255,255,0.4)' : '0 1px 2px rgba(0,0,0,0.6)'
-                }}
-              >
-                {plaque.kamioshiName}
-              </h3>
-            </div>
-
-            {/* Heartfelt Message */}
-            <div className="relative z-10 my-2 px-2.5 flex-grow flex items-center justify-center">
-              <p
-                className="text-xs sm:text-[13px] italic leading-relaxed text-center font-sans line-clamp-3"
-                style={{ color: theme.textColor }}
-              >
-                “{plaque.message}”
-              </p>
-            </div>
-
-            {/* Author, City & Double-Ringed Vermilion Hanko Seal */}
-            <div
-              className="relative z-10 pt-2 border-t flex items-end justify-between gap-2 px-1"
-              style={{ borderColor: theme.isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)' }}
             >
-              <div className="flex flex-col text-[11px] leading-tight min-w-0">
-                <span className="font-semibold truncate" style={{ color: theme.inkColor }}>
-                  {plaque.authorName || t.card.defaultAuthor}
-                </span>
-                <span className="text-[10px] opacity-80 truncate mt-0.5" style={{ color: theme.mutedColor }}>
-                  {plaque.location || t.card.defaultLocation}
-                </span>
-              </div>
+              {/* Full 5-Sided Pentagonal SVG Border */}
+              <svg
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 w-full h-full z-20"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+              >
+                <polygon
+                  points="50,0.6 99.4,13.2 99.4,99.4 0.6,99.4 0.6,13.2"
+                  fill="none"
+                  stroke={theme.borderColor}
+                  strokeWidth="1.5"
+                  vectorEffect="non-scaling-stroke"
+                />
+              </svg>
 
-              {/* Traditional Double-Bordered Vermilion Hanko Stamp */}
+              {/* Interactive Specular Sunlight Sheen (scoped inside isolation: isolate) */}
               <div
-                className="ema-hanko-stamp flex-shrink-0 w-8 h-8 rounded-[4px] p-[2px] shadow-md transform -rotate-6 transition-transform group-hover:rotate-0"
+                className="pointer-events-none absolute inset-0 transition-opacity duration-300 mix-blend-soft-light"
                 style={{
-                  backgroundColor: theme.stampBg,
-                  border: `1.5px solid ${theme.stampBorder}`
+                  opacity: tilt.active ? 0.45 : 0,
+                  background: `radial-gradient(circle at ${tilt.sheenX}% ${tilt.sheenY}%, rgba(255, 250, 220, 0.72) 0%, transparent 62%)`
                 }}
-                title={`Seal: ${plaque.stamp}`}
-              >
-                <div className="w-full h-full border border-white/35 rounded-[2px] flex items-center justify-center font-serif text-white font-bold text-sm leading-none">
-                  {plaque.stamp}
+              />
+
+              {/* Brass Grommet Eyelet Hole */}
+              <div className="relative z-10 flex justify-center items-center pt-1.5 mb-1.5">
+                <div className="w-4 h-4 rounded-full bg-gradient-to-br from-amber-300 via-amber-700 to-amber-950 p-0.5 shadow-md flex items-center justify-center">
+                  <div className="w-full h-full rounded-full bg-zinc-950 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: cord.main }} />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Interactive Action Bar: Ring Bell, Share Link, View Keepsake */}
-            <div
-              className="relative z-10 mt-2.5 pt-2 border-t flex items-center justify-between gap-1.5 text-xs"
-              style={{ borderColor: theme.isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)' }}
-            >
-              <button
-                type="button"
-                onClick={handleBowClick}
-                aria-pressed={isBellRung}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all duration-200 border ${
-                  hasBowedRecently
-                    ? 'bg-amber-500 text-zinc-950 border-amber-300 scale-105 shadow-md'
-                    : isBellRung
-                    ? theme.isLight
-                      ? 'bg-amber-900/15 text-amber-950 border-amber-800/30'
-                      : 'bg-amber-500/20 text-amber-200 border-amber-500/35'
-                    : theme.isLight
-                    ? 'bg-black/10 hover:bg-black/20 text-zinc-900 border-black/15'
-                    : 'bg-white/10 hover:bg-white/20 text-white border-white/15'
-                }`}
+              {/* Top Meta Row: Coordinate Number, Live Relative Time & Category Pill */}
+              <div className="relative z-10 flex items-center justify-between gap-1.5 px-1 text-[11px] font-mono tracking-wider mb-1.5">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span
+                    className="font-bold opacity-90 shrink-0"
+                    style={{ color: theme.mutedColor }}
+                  >
+                    #{plaque.coordinate.toLocaleString()}
+                  </span>
+                  {relativeTimeStr && (
+                    <span
+                      className="ema-card-time inline-flex items-center gap-1 text-[9px] opacity-75 truncate"
+                      style={{ color: theme.mutedColor }}
+                    >
+                      {isFreshlyHung && (
+                        <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                      )}
+                      <span>{relativeTimeStr}</span>
+                    </span>
+                  )}
+                </div>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border shadow-sm shrink-0 ${categoryMeta.badgeClass}`}>
+                  {categoryMeta.renderIcon({ size: 11 })}
+                  <span className="ema-card-cat-label">{t.categories[plaque.category] || categoryMeta.label}</span>
+                </span>
+              </div>
+
+              {/* Center: Oshi Name in Bold Calligraphic Serif (Fluid Container Scaling) */}
+              <div className="relative z-10 my-1 text-center px-1.5">
+                <h3
+                  className="ema-card-title font-bold tracking-tight font-serif leading-tight break-words"
+                  style={{
+                    color: theme.inkColor,
+                    textShadow: theme.isLight ? '0 1px 0 rgba(255,255,255,0.4)' : '0 1px 2px rgba(0,0,0,0.6)'
+                  }}
+                >
+                  {plaque.kamioshiName}
+                </h3>
+              </div>
+
+              {/* Heartfelt Message */}
+              <div className="relative z-10 my-1.5 px-2 flex-grow flex items-center justify-center">
+                <p
+                  className="ema-card-message text-xs sm:text-[13px] italic leading-relaxed text-center font-sans"
+                  style={{ color: theme.textColor }}
+                >
+                  “{plaque.message}”
+                </p>
+              </div>
+
+              {/* Author, City & Double-Ringed Vermilion Hanko Seal */}
+              <div
+                className="relative z-10 pt-2 border-t flex items-end justify-between gap-2 px-1"
+                style={{ borderColor: theme.isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)' }}
               >
-                {isBellRung ? <CheckSealIcon size={12} /> : <SuzuBellIcon size={13} />}
-                <span>{isBellRung ? t.card.bellRung : t.card.ringBell}</span>
-                <span className="font-mono text-[10px] opacity-90">({plaque.bowCount})</span>
-              </button>
+                <div className="flex flex-col text-[11px] leading-tight min-w-0">
+                  <span className="font-semibold truncate" style={{ color: theme.inkColor }}>
+                    {plaque.authorName || t.card.defaultAuthor}
+                  </span>
+                  <span className="text-[10px] opacity-80 truncate mt-0.5" style={{ color: theme.mutedColor }}>
+                    {plaque.location || t.card.defaultLocation}
+                  </span>
+                </div>
 
-              <div className="flex items-center gap-1">
+                {/* Traditional Double-Bordered Vermilion Hanko Stamp */}
+                <div
+                  className="ema-hanko-stamp flex-shrink-0 w-8 h-8 rounded-[4px] p-[2px] shadow-md transform -rotate-6 transition-transform group-hover:rotate-0"
+                  style={{
+                    backgroundColor: theme.stampBg,
+                    border: `1.5px solid ${theme.stampBorder}`
+                  }}
+                  title={`Seal: ${plaque.stamp}`}
+                >
+                  <div className="w-full h-full border border-white/35 rounded-[2px] flex items-center justify-center font-serif text-white font-bold text-sm leading-none">
+                    {plaque.stamp}
+                  </div>
+                </div>
+              </div>
+
+              {/* Interactive Action Bar: Ring Bell, Share Link, View Keepsake */}
+              <div
+                className="ema-card-actions relative z-10 mt-2.5 pt-2 border-t flex items-center justify-between gap-1.5 text-xs"
+                style={{ borderColor: theme.isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)' }}
+              >
                 <button
                   type="button"
-                  onClick={handleQuickShare}
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-mono transition-colors ${
-                    copiedLink
-                      ? 'bg-emerald-600 text-white'
+                  onClick={handleBowClick}
+                  aria-pressed={isBellRung}
+                  className={`inline-flex items-center gap-1.5 min-h-[28px] px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all duration-200 border ${
+                    hasBowedRecently
+                      ? 'bg-amber-500 text-zinc-950 border-amber-300 scale-105 shadow-md'
+                      : isBellRung
+                      ? theme.isLight
+                        ? 'bg-amber-900/15 text-amber-950 border-amber-800/30'
+                        : 'bg-amber-500/20 text-amber-200 border-amber-500/35'
                       : theme.isLight
-                      ? 'hover:bg-black/10 text-zinc-800'
-                      : 'hover:bg-white/10 text-zinc-200'
+                      ? 'bg-black/10 hover:bg-black/20 text-zinc-900 border-black/15'
+                      : 'bg-white/10 hover:bg-white/20 text-white border-white/15'
                   }`}
-                  title="Copy direct link to this plaque"
                 >
-                  {copiedLink ? <CheckSealIcon size={11} /> : <LinkCrestIcon size={12} />}
-                  <span>{copiedLink ? t.card.copied : t.card.share}</span>
+                  {isBellRung ? <CheckSealIcon size={12} /> : <SuzuBellIcon size={13} />}
+                  <span className="ema-card-bell-label">{isBellRung ? t.card.bellRung : t.card.ringBell}</span>
+                  <span className="font-mono text-[10px] opacity-90">({plaque.bowCount})</span>
                 </button>
 
-                <span
-                  className="px-1.5 py-1 text-[10px] font-mono font-semibold opacity-75 group-hover:opacity-100 transition-opacity"
-                  style={{ color: theme.mutedColor }}
-                >
-                  {t.card.keepsake} →
-                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={handleQuickShare}
+                    className={`inline-flex items-center gap-1 min-h-[28px] px-2 py-1 rounded-md text-[10px] font-mono transition-colors ${
+                      copiedLink
+                        ? 'bg-emerald-600 text-white'
+                        : theme.isLight
+                        ? 'hover:bg-black/10 text-zinc-800'
+                        : 'hover:bg-white/10 text-zinc-200'
+                    }`}
+                    title="Copy direct link to this plaque"
+                  >
+                    {copiedLink ? <CheckSealIcon size={11} /> : <LinkCrestIcon size={12} />}
+                    <span className="ema-card-share-label">{copiedLink ? t.card.copied : t.card.share}</span>
+                  </button>
+
+                  <span
+                    className="ema-card-keepsake-hint px-1.5 py-1 text-[10px] font-mono font-semibold opacity-75 group-hover:opacity-100 transition-opacity"
+                    style={{ color: theme.mutedColor }}
+                  >
+                    {t.card.keepsake} →
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
-    </article>
+      </article>
+    </div>
   );
 };

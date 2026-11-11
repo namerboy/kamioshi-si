@@ -1,14 +1,5 @@
 export type Language = 'en' | 'ja';
 
-export interface OmikujiFortuneTranslation {
-  rank: string;
-  rankSub: string;
-  title: string;
-  blessing: string;
-  luckyItem: string;
-  oshiAdvice: string;
-}
-
 export interface Translations {
   header: {
     subtitleEmpty: string;
@@ -22,11 +13,13 @@ export interface Translations {
     themeMidnightTitle: string;
     themeSakuraBtn: string;
     themeMidnightBtn: string;
-    omikujiBtn: string;
-    omikujiTitle: string;
     termsBtn: string;
     termsTitle: string;
     hangBtn: string;
+    mobileDockWall: string;
+    mobileDockSearch: string;
+    mobileDockCarve: string;
+    mobileDockTerms: string;
   };
   hero: {
     badge: string;
@@ -36,8 +29,6 @@ export interface Translations {
     statCities: (count: number) => string;
     statBells: (count: number) => string;
     hangCta: string;
-    omikujiCta: string;
-    ringBellCta: string;
   };
   filter: {
     searchPlaceholder: string;
@@ -64,6 +55,8 @@ export interface Translations {
     emptyCarveQuery: (query: string) => string;
     emptyCarveFirst: string;
     resetFilters: string;
+    breezeBtn: string;
+    breezeTitle: string;
   };
   card: {
     signedPrefix: string;
@@ -75,6 +68,10 @@ export interface Translations {
     copied: string;
     keepsake: string;
     hidePlaqueTitle: string;
+    justNow: string;
+    minutesAgo: (m: number) => string;
+    hoursAgo: (h: number) => string;
+    daysAgo: (d: number) => string;
   };
   hangModal: {
     title: string;
@@ -136,22 +133,6 @@ export interface Translations {
     downloadBtn: string;
     renderingBtn: string;
   };
-  omikujiModal: {
-    title: string;
-    subtitle: string;
-    closeAria: string;
-    drawPromptTitle: string;
-    drawPromptDesc: string;
-    drawBtn: string;
-    shakingBtn: string;
-    redrawBtn: string;
-    hangForOshiBtn: string;
-    goshuinLabel: string;
-    goshuinSub: string;
-    luckyItemLabel: string;
-    adviceLabel: string;
-    fortunes: OmikujiFortuneTranslation[];
-  };
   termsModal: {
     title: string;
     subtitle: string;
@@ -182,7 +163,6 @@ export interface Translations {
   footer: {
     brandTag: string;
     hangLink: string;
-    omikujiLink: string;
     termsLink: string;
   };
 }
@@ -201,11 +181,13 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       themeMidnightTitle: 'Switch to Midnight Temple theme (幽玄)',
       themeSakuraBtn: 'Sakura',
       themeMidnightBtn: 'Midnight',
-      omikujiBtn: 'Omikuji',
-      omikujiTitle: 'Draw a shrine fortune slip (おみくじ)',
       termsBtn: 'Terms',
       termsTitle: 'Terms of Use & Guidelines',
-      hangBtn: 'Hang a Plaque'
+      hangBtn: 'Hang a Plaque',
+      mobileDockWall: 'Wall',
+      mobileDockSearch: 'Search',
+      mobileDockCarve: 'Carve',
+      mobileDockTerms: 'Charter'
     },
     hero: {
       badge: '絵馬掛け • Wooden Plaque Wall',
@@ -214,9 +196,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       statPlaques: (count) => (count === 1 ? 'Plaque Hung' : 'Plaques Hung'),
       statCities: (count) => (count === 1 ? 'City' : 'Cities'),
       statBells: (count) => (count === 1 ? 'Bell Rung' : 'Bells Rung'),
-      hangCta: 'Hang Your Plaque',
-      omikujiCta: 'Draw an Omikuji',
-      ringBellCta: 'Ring Shrine Bell'
+      hangCta: 'Hang Your Plaque'
     },
     filter: {
       searchPlaceholder: 'Search by oshi, city, message, or #number...',
@@ -256,7 +236,9 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       emptyReadyDesc: 'Click this wooden plaque to hang the very first dedication on this wall.',
       emptyCarveQuery: (query) => `Carve Plaque for “${query}”`,
       emptyCarveFirst: 'Carve Plaque #1',
-      resetFilters: 'Reset search & category filters'
+      resetFilters: 'Reset search & category filters',
+      breezeBtn: 'Send Breeze',
+      breezeTitle: 'Send a gentle breeze across the wooden plaques and sakura petals'
     },
     card: {
       signedPrefix: 'Signed',
@@ -267,7 +249,11 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       share: 'Share',
       copied: 'Copied',
       keepsake: 'Keepsake',
-      hidePlaqueTitle: 'Hide this plaque from your view'
+      hidePlaqueTitle: 'Hide this plaque from your view',
+      justNow: 'Just now',
+      minutesAgo: (m) => `${m}m ago`,
+      hoursAgo: (h) => `${h}h ago`,
+      daysAgo: (d) => `${d}d ago`
     },
     hangModal: {
       title: 'Carve a Wooden Plaque',
@@ -330,55 +316,6 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       downloadBtn: 'Download PNG',
       renderingBtn: 'Rendering...'
     },
-    omikujiModal: {
-      title: 'Shrine Omikuji & Commemorative Seal',
-      subtitle: 'Draw a reflective blessing slip for your oshi & receive today’s commemorative stamp',
-      closeAria: 'Close Omikuji modal',
-      drawPromptTitle: 'Shake the Fortune Cylinder',
-      drawPromptDesc: 'Focus on your number one favorite—person, craft, pet, or dream—and draw a grounded reflection for today.',
-      drawBtn: 'Draw an Omikuji',
-      shakingBtn: 'Drawing...',
-      redrawBtn: 'Draw Again',
-      hangForOshiBtn: 'Hang a Plaque',
-      goshuinLabel: 'COMMEMORATIVE PILGRIMAGE SEAL',
-      goshuinSub: 'kamioshi.si • Digital Shrine Keepsake',
-      luckyItemLabel: 'MINDFUL COMPANION',
-      adviceLabel: 'WORDS FOR THE HEART',
-      fortunes: [
-        {
-          rank: '大吉 • DAIKICHI',
-          rankSub: 'Sincerity & Heart',
-          title: 'A Pure Heart Needs No Audience',
-          blessing: 'Holding sincere appreciation for what inspires you is its own quiet reward. The ability to celebrate another without condition brings clarity and warmth to your own days.',
-          luckyItem: 'A cup of warm green tea & a quiet moment of reflection',
-          oshiAdvice: 'Take a quiet moment today to remember why you first started cheering for your favorite.'
-        },
-        {
-          rank: '中吉 • CHUKICHI',
-          rankSub: 'Quiet Devotion',
-          title: 'Steadfast Presence in Ordinary Times',
-          blessing: 'True devotion is not measured by noise, but by calm presence through quiet days and bright days alike. Your appreciation carries genuine warmth without needing to be loud.',
-          luckyItem: 'A favorite calming song & a natural pace',
-          oshiAdvice: 'Support what you love at your own unhurried pace, free from pressure or rush.'
-        },
-        {
-          rank: '小吉 • SHOKICHI',
-          rankSub: 'Gentle Balance',
-          title: 'Each Day Has Its Own Season',
-          blessing: 'Celebrating what brings you joy in small, ordinary moments creates sustainable devotion. Before spending energy on anything outside, first care for your own well-being.',
-          luckyItem: 'A slow deep breath & adequate rest',
-          oshiAdvice: 'To cheer on another with joy, first make sure you are resting well yourself.'
-        },
-        {
-          rank: '吉 • KICHI',
-          rankSub: 'Unclouded Path',
-          title: 'A Flower Blooms in Its Own Time',
-          blessing: 'Your appreciation is personal and real; it requires no comparison to how anyone else expresses theirs. Staying true to what genuinely moves you is all that matters.',
-          luckyItem: 'Morning natural light & a handwritten note',
-          oshiAdvice: 'Cherish your own unique connection with what you love, free from comparison or envy.'
-        }
-      ]
-    },
     termsModal: {
       title: 'Terms of Use & Guidelines',
       subtitle: 'Free community project • Guidelines, disclaimers & data controls',
@@ -420,7 +357,6 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     footer: {
       brandTag: 'kamioshi.si — Inspired by Japanese shrine prayer boards (絵馬). Free to use.',
       hangLink: 'Hang a Plaque',
-      omikujiLink: 'Omikuji',
       termsLink: 'Terms & Guidelines'
     }
   },
@@ -437,11 +373,13 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       themeMidnightTitle: '幽玄の神社（夜モード）に切り替え',
       themeSakuraBtn: '朝桜',
       themeMidnightBtn: '幽玄',
-      omikujiBtn: 'おみくじ',
-      omikujiTitle: 'おみくじを引く・参拝記念印',
       termsBtn: '利用規約',
       termsTitle: '利用規約・ガイドライン',
-      hangBtn: '絵馬を掛ける'
+      hangBtn: '絵馬を掛ける',
+      mobileDockWall: '絵馬壁',
+      mobileDockSearch: '検索',
+      mobileDockCarve: '奉納する',
+      mobileDockTerms: '規約'
     },
     hero: {
       badge: '絵馬掛け • 神推し奉納所',
@@ -450,9 +388,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       statPlaques: () => '奉納された絵馬',
       statCities: () => '参加地域',
       statBells: () => '鳴らされた鈴',
-      hangCta: '絵馬を奉納する',
-      omikujiCta: 'おみくじを引く',
-      ringBellCta: '本堂の鈴を鳴らす'
+      hangCta: '絵馬を奉納する'
     },
     filter: {
       searchPlaceholder: '推し名、地域、メッセージ、#番号で検索...',
@@ -492,7 +428,9 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       emptyReadyDesc: 'タップしてこの壁に最初の絵馬を掛けましょう。',
       emptyCarveQuery: (query) => `「${query}」の絵馬を刻む`,
       emptyCarveFirst: '最初の絵馬を刻む',
-      resetFilters: '検索とカテゴリー絞り込みを解除'
+      resetFilters: '検索とカテゴリー絞り込みを解除',
+      breezeBtn: '春風を送る',
+      breezeTitle: '絵馬掛けと桜の花びらに心地よい風を送ります'
     },
     card: {
       signedPrefix: '奉納日',
@@ -503,7 +441,11 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       share: '共有',
       copied: 'コピー済',
       keepsake: '記念品',
-      hidePlaqueTitle: 'この絵馬を非表示にする'
+      hidePlaqueTitle: 'この絵馬を非表示にする',
+      justNow: 'たった今',
+      minutesAgo: (m) => `${m}分前`,
+      hoursAgo: (h) => `${h}時間前`,
+      daysAgo: (d) => `${d}日前`
     },
     hangModal: {
       title: '絵馬を刻んで奉納する',
@@ -566,55 +508,6 @@ export const TRANSLATIONS: Record<Language, Translations> = {
       downloadBtn: '記念画像を保存',
       renderingBtn: '画像生成中...'
     },
-    omikujiModal: {
-      title: '推しおみくじ・参拝記念印',
-      subtitle: '推しへの想いを心に整え、本日の参拝記念印を授かります',
-      closeAria: 'おみくじを閉じる',
-      drawPromptTitle: 'みくじ筒を振る',
-      drawPromptDesc: 'あなたの一番大切な推し（人物・作品・ペット・夢など）を心に浮かべて、静かにおみくじを引いてください。',
-      drawBtn: 'おみくじを引く',
-      shakingBtn: 'みくじ棒を抽出中...',
-      redrawBtn: 'もう一度引く',
-      hangForOshiBtn: '推しの絵馬を奉納する',
-      goshuinLabel: '参拝記念印',
-      goshuinSub: 'kamioshi.si • 参拝記念',
-      luckyItemLabel: '心を整えるもの',
-      adviceLabel: '心にとどめる言葉',
-      fortunes: [
-        {
-          rank: '大吉 • DAIKICHI',
-          rankSub: '誠の心（まごころ）',
-          title: '見返りを求めぬ想いは自らを照らす',
-          blessing: '見返りを求めない純粋な感謝の気持ちは、それ自体が自らの心を温かく照らします。誰かを大切に想い、純粋に応援できる心があることこそが尊い福です。',
-          luckyItem: '温かい緑茶・静かに振り返る時間',
-          oshiAdvice: '推しに出会えた最初の日の気持ちを静かに思い出してみましょう。'
-        },
-        {
-          rank: '中吉 • CHUKICHI',
-          rankSub: '和顔愛語（わげんあいご）',
-          title: '変わらぬ日々に宿る静かな温もり',
-          blessing: '応援の深さは声の大きさではなく、日々の静かな敬意に宿ります。賑やかな時も穏やかな時も、変わらぬ温かな眼差しを持ち続けることが真の調和を生みます。',
-          luckyItem: '心落ち着く楽曲・自然体の呼吸',
-          oshiAdvice: '周りの熱量に無理に合わせず、自分らしい歩幅で応援を続けましょう。'
-        },
-        {
-          rank: '小吉 • SHOKICHI',
-          rankSub: '日日是好日（にちにちこれこうじつ）',
-          title: '日常のささやかな瞬間に宿る安らぎ',
-          blessing: '当たり前の毎日に小さな喜びを見出すことが、長く健やかな推し活を支えます。誰かを応援する前に、まずは自分自身の心と体を慈しみ、十分な休息をとってください。',
-          luckyItem: '深くゆっくりとした深呼吸・十分な睡眠',
-          oshiAdvice: '誰かを温かく応援するために、まずは自分自身の休息を最優先にしてください。'
-        },
-        {
-          rank: '吉 • KICHI',
-          rankSub: '明鏡止水（めいきょうしすい）',
-          title: '花はそれぞれの季節に咲く',
-          blessing: 'あなたの「好き」という気持ちは誰かと比べるものではなく、あなた自身の心に咲く唯一無二の想いです。他人の評価や数字に惑わされず、自身の直感を信じましょう。',
-          luckyItem: '朝の自然光・手書きのメモ',
-          oshiAdvice: '他人の応援の形と比べることなく、自分と推しとの誠実なつながりを大切にしてください。'
-        }
-      ]
-    },
     termsModal: {
       title: '利用規約・ガイドライン',
       subtitle: '非営利コミュニティ方針とローカルデータ管理',
@@ -656,7 +549,6 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     footer: {
       brandTag: 'kamioshi.si — 神社仏閣の絵馬（えま）文化に想を得た奉納壁。完全無料。',
       hangLink: '絵馬を掛ける',
-      omikujiLink: 'おみくじ',
       termsLink: '利用規約'
     }
   }

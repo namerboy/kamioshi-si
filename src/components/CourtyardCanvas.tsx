@@ -50,13 +50,18 @@ export const CourtyardCanvas: React.FC = () => {
     let animId = 0;
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
+    let gustBoost = 0;
 
     const handleResize = () => {
       if (!canvas) return;
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
     };
+    const handleBreezeGust = () => {
+      gustBoost = 2.6;
+    };
     window.addEventListener('resize', handleResize, { passive: true });
+    window.addEventListener('shrine-breeze', handleBreezeGust);
 
     // Only pink Sakura petals falling gently in the background
     const count = Math.min(42, Math.max(20, Math.floor((width * height) / 34000)));
@@ -98,17 +103,22 @@ export const CourtyardCanvas: React.FC = () => {
 
     const render = () => {
       ctx.clearRect(0, 0, width, height);
+      if (gustBoost > 0.01) {
+        gustBoost *= 0.982;
+      } else {
+        gustBoost = 0;
+      }
 
       for (const p of petals) {
-        p.swayPhase += p.swaySpeed;
-        p.tumblePhase += p.tumbleSpeed;
+        p.swayPhase += p.swaySpeed * (1 + gustBoost * 0.65);
+        p.tumblePhase += p.tumbleSpeed * (1 + gustBoost * 0.8);
 
         const horizontalFlutter = Math.sin(p.swayPhase) * p.swayAmp;
         const verticalGlide = Math.cos(p.swayPhase * 2) * 0.12;
 
-        p.x += p.vx + horizontalFlutter;
-        p.y += p.vy + verticalGlide;
-        p.rotation += p.rotSpeed + Math.cos(p.swayPhase) * 0.005;
+        p.x += p.vx + horizontalFlutter + gustBoost * (0.9 + p.depth * 1.1);
+        p.y += p.vy + verticalGlide - gustBoost * 0.08;
+        p.rotation += p.rotSpeed + Math.cos(p.swayPhase) * 0.005 + gustBoost * 0.012;
 
         // Seamless wrap around viewport edges
         const margin = p.size + 12;
@@ -150,6 +160,7 @@ export const CourtyardCanvas: React.FC = () => {
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('shrine-breeze', handleBreezeGust);
     };
   }, []);
 
